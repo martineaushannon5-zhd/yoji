@@ -21,14 +21,7 @@ export const VIDEO_LIST: VideoItem[] = [
     date: today(),
     thumb: $r('app.media.video_thumb_sloppy'),
     src: $rawfile('sloppy.mp4')
-  },
-  {
-    id: 'graduation-speech',
-    title: '【哥伦比亚大学】2025年毕业典礼优秀毕业生杨安泽演讲',
-    date: today(),
-    thumb: $r('app.media.video_thumb_graduation'),
-    src: $rawfile('graduation.mp4')
-  },
+  }
 ];
 
 // 按 id 查找视频，未找到返回 undefined
