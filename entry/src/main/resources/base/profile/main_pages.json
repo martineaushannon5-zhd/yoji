@@ -1,0 +1,14 @@
+{
+  "src": [
+    "pages/SplashPage",
+    "pages/Index",
+    "pages/LearnPage",
+    "pages/WordListPage",
+    "pages/FavoritePage",
+    "pages/LoginPage",
+    "pages/CalendarPage",
+    "pages/AboutPage",
+    "pages/BookListPage",
+    "pages/VideoPlayPage"
+  ]
+}
