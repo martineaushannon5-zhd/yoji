@@ -2,6 +2,7 @@ import { router } from '@kit.ArkUI';
 import { BOOKS } from '../data/WordData';
 import { Store } from '../store/Store';
 import { Theme } from '../common/Theme';
+import { ThemeToggle } from '../view/ThemeToggle';
 import { Word } from '../model/WordModel';
 
 // 排序方式：0 收藏时间，1 首字母，2 词库
@@ -57,6 +58,8 @@ struct FavoritePage {
   @State shown: FavoriteItem[] = [];
   @State keyword: string = '';
   @State sortMode: number = 0;
+  // 深色模式开关：双向绑定 AppStorage，切换后页面配色同步刷新
+  @StorageLink('darkMode') isDark: boolean = false;
   private store: Store = Store.get();
 
   aboutToAppear(): void {
@@ -141,7 +144,7 @@ struct FavoritePage {
     Row() {
       Text('‹')
         .fontSize(28)
-        .fontColor(Theme.ink)
+        .fontColor(Theme.ink(this.isDark))
         .width(44)
         .height(44)
         .textAlign(TextAlign.Center)
@@ -151,11 +154,14 @@ struct FavoritePage {
       Text('单词本')
         .fontSize(18)
         .fontWeight(FontWeight.Bold)
-        .fontColor(Theme.ink)
+        .fontColor(Theme.ink(this.isDark))
       Blank()
       Text(`${this.shown.length} 词`)
         .fontSize(13)
-        .fontColor(Theme.inkSecondary)
+        .fontColor(Theme.inkSecondary(this.isDark))
+      // 右上角月亮按钮：与标题行对齐，点击切换深色/浅色模式
+      ThemeToggle()
+        .margin({ left: 10 })
     }
     .width('100%')
     .padding({ left: 8, right: 24, top: 8, bottom: 8 })
@@ -166,7 +172,9 @@ struct FavoritePage {
     Column() {
       Search({ value: this.keyword, placeholder: '搜索单词或释义' })
         .height(42)
-        .backgroundColor(Theme.card)
+        .fontColor(Theme.ink(this.isDark))
+        .placeholderColor(Theme.inkTertiary(this.isDark))
+        .backgroundColor(Theme.card(this.isDark))
         .borderRadius(21)
         .onChange((value: string) => {
           this.keyword = value;
@@ -178,8 +186,8 @@ struct FavoritePage {
           Text(opt)
             .fontSize(12)
             .fontWeight(this.sortMode === i ? FontWeight.Medium : FontWeight.Normal)
-            .fontColor(this.sortMode === i ? Theme.accent : Theme.inkSecondary)
-            .backgroundColor(this.sortMode === i ? Theme.accentSoft : Theme.card)
+            .fontColor(this.sortMode === i ? Theme.accent(this.isDark) : Theme.inkSecondary(this.isDark))
+            .backgroundColor(this.sortMode === i ? Theme.accentSoft(this.isDark) : Theme.card(this.isDark))
             .borderRadius(15)
             .padding({ left: 12, right: 12, top: 5, bottom: 5 })
             .onClick(() => {
@@ -199,14 +207,14 @@ struct FavoritePage {
     Column() {
       SymbolGlyph($r('sys.symbol.star'))
         .fontSize(48)
-        .fontColor([Theme.inkTertiary])
+        .fontColor([Theme.inkTertiary(this.isDark)])
       Text(this.items.length === 0 ? '单词本还是空的' : '没有找到匹配的单词')
         .fontSize(16)
-        .fontColor(Theme.inkSecondary)
+        .fontColor(Theme.inkSecondary(this.isDark))
         .margin({ top: 16 })
       Text(this.items.length === 0 ? '学习时点击星标，收藏你想记住的单词' : '换个关键词试试')
         .fontSize(13)
-        .fontColor(Theme.inkTertiary)
+        .fontColor(Theme.inkTertiary(this.isDark))
         .margin({ top: 6 })
     }
     .width('100%')
@@ -228,10 +236,10 @@ struct FavoritePage {
                     Text(item.word.word)
                       .fontSize(18)
                       .fontWeight(FontWeight.Bold)
-                      .fontColor(Theme.ink)
+                      .fontColor(Theme.ink(this.isDark))
                     Text(item.word.phonetic)
                       .fontSize(12)
-                      .fontColor(Theme.inkTertiary)
+                      .fontColor(Theme.inkTertiary(this.isDark))
                       .margin({ left: 8 })
                   }
                   .alignItems(VerticalAlign.Bottom)
@@ -240,14 +248,14 @@ struct FavoritePage {
                     if (item.pos !== '') {
                       Text(item.pos)
                         .fontSize(11)
-                        .fontColor(Theme.accent)
-                        .backgroundColor(Theme.accentSoft)
+                        .fontColor(Theme.accent(this.isDark))
+                        .backgroundColor(Theme.accentSoft(this.isDark))
                         .borderRadius(6)
                         .padding({ left: 6, right: 6, top: 2, bottom: 2 })
                     }
                     Text(item.meaning)
                       .fontSize(14)
-                      .fontColor(Theme.inkSecondary)
+                      .fontColor(Theme.inkSecondary(this.isDark))
                       .margin({ left: 8 })
                       .layoutWeight(1)
                   }
@@ -258,11 +266,11 @@ struct FavoritePage {
                   Row() {
                     Text(item.bookName)
                       .fontSize(11)
-                      .fontColor(Theme.inkTertiary)
+                      .fontColor(Theme.inkTertiary(this.isDark))
                     if (item.favoritedAt !== '') {
                       Text(`收藏于 ${item.favoritedAt}`)
                         .fontSize(11)
-                        .fontColor(Theme.inkTertiary)
+                        .fontColor(Theme.inkTertiary(this.isDark))
                         .margin({ left: 10 })
                     }
                   }
@@ -275,7 +283,7 @@ struct FavoritePage {
                 // 收藏星标：点击可取消收藏
                 SymbolGlyph($r('sys.symbol.star_fill'))
                   .fontSize(24)
-                  .fontColor([Theme.accent])
+                  .fontColor([Theme.accent(this.isDark)])
                   .margin({ left: 8 })
                   .onClick(() => {
                     this.onToggleFav(item);
@@ -283,7 +291,7 @@ struct FavoritePage {
               }
               .width('100%')
               .alignItems(VerticalAlign.Center)
-              .backgroundColor(Theme.card)
+              .backgroundColor(Theme.card(this.isDark))
               .borderRadius(18)
               .padding(16)
             }
@@ -298,6 +306,6 @@ struct FavoritePage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(Theme.bg)
+    .backgroundColor(Theme.bg(this.isDark))
   }
 }

@@ -2,6 +2,7 @@ import { router } from '@kit.ArkUI';
 import { findWord } from '../data/WordData';
 import { Store } from '../store/Store';
 import { Theme } from '../common/Theme';
+import { ThemeToggle } from '../view/ThemeToggle';
 import { Word } from '../model/WordModel';
 
 // 日历格子：day 为 0 表示空白占位
@@ -54,6 +55,8 @@ struct CalendarPage {
   @State selectedKey: string = '';
   @State selectedWords: Word[] = [];
   @State learnedDays: number = 0;
+  // 深色模式开关：双向绑定 AppStorage，切换后页面配色同步刷新
+  @StorageLink('darkMode') isDark: boolean = false;
   private store: Store = Store.get();
 
   aboutToAppear(): void {
@@ -164,13 +167,13 @@ struct CalendarPage {
         .textAlign(TextAlign.Center)
         .fontSize(14)
         .fontColor(this.selectedKey === this.cellAt(idx).key ? Color.White :
-          (this.isToday(this.cellAt(idx).key) ? Theme.accent : Theme.inkSecondary))
-        .backgroundColor(this.selectedKey === this.cellAt(idx).key ? Theme.accent : Color.Transparent)
+          (this.isToday(this.cellAt(idx).key) ? Theme.accent(this.isDark) : Theme.inkSecondary(this.isDark)))
+        .backgroundColor(this.selectedKey === this.cellAt(idx).key ? Theme.accent(this.isDark) : Color.Transparent)
         .borderRadius(17)
       if (this.cellAt(idx).day > 0) {
         if (this.hasRecord(this.cellAt(idx).key)) {
           Circle({ width: 4, height: 4 })
-            .fill(this.selectedKey === this.cellAt(idx).key ? Color.White : Theme.accent)
+            .fill(this.selectedKey === this.cellAt(idx).key ? Color.White : Theme.accent(this.isDark))
             .margin({ top: 3 })
         } else {
           Circle({ width: 4, height: 4 })
@@ -206,17 +209,17 @@ struct CalendarPage {
         Text(word.word)
           .fontSize(17)
           .fontWeight(FontWeight.Bold)
-          .fontColor(Theme.ink)
+          .fontColor(Theme.ink(this.isDark))
         Text(word.phonetic)
           .fontSize(12)
-          .fontColor(Theme.inkSecondary)
+          .fontColor(Theme.inkSecondary(this.isDark))
           .margin({ left: 8 })
         Blank()
         if (splitMeaning(word.meaning).pos !== '') {
           Text(splitMeaning(word.meaning).pos)
             .fontSize(11)
-            .fontColor(Theme.accent)
-            .backgroundColor(Theme.accentSoft)
+            .fontColor(Theme.accent(this.isDark))
+            .backgroundColor(Theme.accentSoft(this.isDark))
             .borderRadius(8)
             .padding({ left: 8, right: 8, top: 3, bottom: 3 })
         }
@@ -224,12 +227,12 @@ struct CalendarPage {
       .width('100%')
       Text(splitMeaning(word.meaning).text)
         .fontSize(13)
-        .fontColor(Theme.inkSecondary)
+        .fontColor(Theme.inkSecondary(this.isDark))
         .width('100%')
         .margin({ top: 6 })
     }
     .alignItems(HorizontalAlign.Start)
-    .backgroundColor(Theme.card)
+    .backgroundColor(Theme.card(this.isDark))
     .borderRadius(16)
     .padding(16)
     .width('100%')
@@ -238,7 +241,7 @@ struct CalendarPage {
 
   build() {
     Stack() {
-      // 背景：顶部三分之一为欢迎页同款渐变（#0077ff → #000000，52°），下方三分之二为纯白
+      // 背景：顶部三分之一为欢迎页同款渐变（#0077ff → #000000，52°），下方三分之二为纯白（深色下为深灰）
       Column() {
         Column()
           .width('100%')
@@ -250,7 +253,7 @@ struct CalendarPage {
         Column()
           .width('100%')
           .layoutWeight(1)
-          .backgroundColor(Color.White)
+          .backgroundColor(Theme.surface(this.isDark))
       }
       .width('100%')
       .height('100%')
@@ -280,12 +283,12 @@ struct CalendarPage {
             Column() {
               SymbolGlyph($r('sys.symbol.chevron_left'))
                 .fontSize(16)
-                .fontColor([Theme.ink])
+                .fontColor([Theme.ink(this.isDark)])
             }
             .width(32)
             .height(32)
             .borderRadius(16)
-            .backgroundColor(Color.White)
+            .backgroundColor(Theme.card(this.isDark))
             .justifyContent(FlexAlign.Center)
             .onClick(() => {
               this.prevMonth();
@@ -293,29 +296,31 @@ struct CalendarPage {
             Column() {
               SymbolGlyph($r('sys.symbol.chevron_right'))
                 .fontSize(16)
-                .fontColor([Theme.ink])
+                .fontColor([Theme.ink(this.isDark)])
             }
             .width(32)
             .height(32)
             .borderRadius(16)
-            .backgroundColor(Color.White)
+            .backgroundColor(Theme.card(this.isDark))
             .justifyContent(FlexAlign.Center)
             .onClick(() => {
               this.nextMonth();
             })
+            // 右上角月亮按钮：点击切换深色/浅色模式
+            ThemeToggle()
           }
         }
         .width('100%')
         .padding({ left: 16, right: 16, top: 8, bottom: 12 })
 
-        // 日历卡片：星期表头 + 日期网格，纯白背景 + 阴影（左右留空展示背景）
+        // 日历卡片：星期表头 + 日期网格，纯白背景 + 阴影（左右留空展示背景；深色下为深灰卡片）
         Column() {
           // 星期表头
           Row() {
             ForEach(WEEKDAYS, (d: string) => {
               Text(d)
                 .fontSize(12)
-                .fontColor(Theme.inkTertiary)
+                .fontColor(Theme.inkTertiary(this.isDark))
                 .layoutWeight(1)
                 .textAlign(TextAlign.Center)
             }, (d: string) => d)
@@ -333,7 +338,7 @@ struct CalendarPage {
           .margin({ bottom: 10 })
         }
         .width('90%')
-        .backgroundColor(Color.White)
+        .backgroundColor(Theme.card(this.isDark))
         .borderRadius(5)
         .shadow({ radius: 16, color: 'rgba(27, 30, 40, 0.1)', offsetY: 4 })
         .margin({ left: 24, right: 24, top: 16 })
@@ -344,20 +349,20 @@ struct CalendarPage {
       Row() {
         Text(`${this.selectedLabel()} · 学了 ${this.selectedWords.length} 个单词`)
           .fontSize(14)
-          .fontColor(Theme.inkSecondary)
+          .fontColor(Theme.inkSecondary(this.isDark))
           .layoutWeight(1)
         Row() {
           SymbolGlyph($r('sys.symbol.flame'))
             .fontSize(15)
-            .fontColor([Theme.accent])
+            .fontColor([Theme.accent(this.isDark)])
           Text(`${this.learnedDays}`)
             .fontSize(16)
             .fontWeight(FontWeight.Bold)
-            .fontColor(Theme.accent)
+            .fontColor(Theme.accent(this.isDark))
             .margin({ left: 6 })
           Text('天')
             .fontSize(12)
-            .fontColor(Theme.inkSecondary)
+            .fontColor(Theme.inkSecondary(this.isDark))
         }
       }
       .width('100%')
@@ -370,14 +375,14 @@ struct CalendarPage {
             Column() {
               SymbolGlyph($r('sys.symbol.calendar'))
                 .fontSize(40)
-                .fontColor([Theme.inkTertiary])
+                .fontColor([Theme.inkTertiary(this.isDark)])
               Text('这一天还没有学习记录')
                 .fontSize(13)
-                .fontColor(Theme.inkSecondary)
+                .fontColor(Theme.inkSecondary(this.isDark))
                 .margin({ top: 10 })
               Text('日历中带圆点的日期有学习记录，点击看看吧')
                 .fontSize(12)
-                .fontColor(Theme.inkTertiary)
+                .fontColor(Theme.inkTertiary(this.isDark))
                 .margin({ top: 4 })
             }
             .width('100%')

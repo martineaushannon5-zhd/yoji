@@ -1,6 +1,7 @@
 import { router } from '@kit.ArkUI';
 import { Store } from '../store/Store';
 import { Theme } from '../common/Theme';
+import { ThemeToggle } from './ThemeToggle';
 import { getBook } from '../data/WordData';
 
 const TARGET_OPTIONS: number[] = [5, 10, 15, 20, 30, 50];
@@ -11,18 +12,22 @@ struct TargetInputDialog {
   controller: CustomDialogController;
   onConfirm: (value: number) => void = (): void => {};
   @State value: string = '';
+  // 深色模式开关：弹窗跟随全局主题刷新
+  @StorageLink('darkMode') isDark: boolean = false;
 
   build() {
     Column({ space: 16 }) {
       Text('自定义每日目标')
         .fontSize(17)
         .fontWeight(FontWeight.Bold)
-        .fontColor(Theme.ink)
+        .fontColor(Theme.ink(this.isDark))
       TextInput({ placeholder: '请输入每天学习的单词数（5-50）', text: this.value })
         .type(InputType.Number)
         .height(48)
         .fontSize(15)
-        .backgroundColor(Theme.bg)
+        .fontColor(Theme.ink(this.isDark))
+        .placeholderColor(Theme.inkTertiary(this.isDark))
+        .backgroundColor(Theme.bg(this.isDark))
         .borderRadius(12)
         .padding({ left: 14, right: 14 })
         .onChange((v: string) => {
@@ -32,8 +37,8 @@ struct TargetInputDialog {
         Button('取消')
           .fontSize(15)
           .type(ButtonType.Capsule)
-          .backgroundColor(Theme.bg)
-          .fontColor(Theme.ink)
+          .backgroundColor(Theme.bg(this.isDark))
+          .fontColor(Theme.ink(this.isDark))
           .layoutWeight(1)
           .height(44)
           .onClick(() => {
@@ -42,7 +47,7 @@ struct TargetInputDialog {
         Button('确定')
           .fontSize(15)
           .type(ButtonType.Capsule)
-          .backgroundColor(Theme.accent)
+          .backgroundColor(Theme.accent(this.isDark))
           .layoutWeight(1)
           .height(44)
           .onClick(() => {
@@ -63,6 +68,8 @@ struct TargetInputDialog {
 export struct MineView {
   // tick 由首页在 onPageShow（如从词库页返回）时自增，@Watch 触发快照同步刷新 UI
   @Prop @Watch('syncFromStore') tick: number = 0;
+  // 深色模式开关：双向绑定 AppStorage，切换后本视图配色同步刷新
+  @StorageLink('darkMode') isDark: boolean = false;
   @State target: number = 0;
   // 展示数据快照：Store 为非响应式单例，需同步到 @State 才能驱动刷新
   @State bookName: string = '';
@@ -72,6 +79,8 @@ export struct MineView {
   @State learnedDays: number = 0;
   @State favCount: number = 0;
   onMutate: () => void = (): void => {};
+  // 滚动位置回调：用于首页底部导航栏的收起/展开联动
+  onScrollY: (y: number) => void = (y: number): void => {};
 
   private store: Store = Store.get();
   private targetDialog: CustomDialogController | undefined = undefined;
@@ -126,17 +135,17 @@ export struct MineView {
         .width(64)
         .height(64)
         .borderRadius(32)
-        .backgroundColor(this.isLoggedIn ? Theme.accent : '#B8C0CE')
+        .backgroundColor(this.isLoggedIn ? Theme.accent(this.isDark) : (this.isDark ? '#39404E' : '#B8C0CE'))
         .justifyContent(FlexAlign.Center)
 
         Column() {
           Text(this.isLoggedIn ? this.nickname : '请先登录')
             .fontSize(19)
             .fontWeight(FontWeight.Bold)
-            .fontColor(Theme.ink)
+            .fontColor(Theme.ink(this.isDark))
           Text(this.isLoggedIn ? '已登录' : '登录后同步你的学习进度')
             .fontSize(12)
-            .fontColor(Theme.inkSecondary)
+            .fontColor(Theme.inkSecondary(this.isDark))
             .margin({ top: 4 })
         }
         .alignItems(HorizontalAlign.Start)
@@ -146,7 +155,7 @@ export struct MineView {
         if (!this.isLoggedIn) {
           SymbolGlyph($r('sys.symbol.chevron_right'))
             .fontSize(18)
-            .fontColor([Theme.inkSecondary])
+            .fontColor([Theme.inkSecondary(this.isDark)])
         }
       }
       .width('100%')
@@ -158,7 +167,7 @@ export struct MineView {
 
       Divider()
         .strokeWidth(1)
-        .color('#EEF0F4')
+        .color(Theme.line(this.isDark))
         .margin({ top: 16, bottom: 14 })
 
       // 学习数据统计
@@ -168,7 +177,7 @@ export struct MineView {
           SymbolGlyph($r('sys.symbol.book'))
             // ⚠️【图案大小】修改此 fontSize 即可调整图案大小（当前 56）
             .fontSize(56)
-            .fontColor([Theme.success])
+            .fontColor([Theme.success(this.isDark)])
             .opacity(0.35)
             .rotate({ angle: -15 })
             .margin({ right: 4 })
@@ -177,10 +186,10 @@ export struct MineView {
             Text(`${this.totalLearned}`)
               .fontSize(22)
               .fontWeight(FontWeight.Bold)
-              .fontColor(Theme.ink)
+              .fontColor(Theme.ink(this.isDark))
             Text('学习单词')
               .fontSize(12)
-              .fontColor(Theme.inkSecondary)
+              .fontColor(Theme.inkSecondary(this.isDark))
               .margin({ top: 4 })
           }
           .width('100%')
@@ -198,14 +207,14 @@ export struct MineView {
           .vertical(true)
           .height(36)
           .strokeWidth(1)
-          .color('#EEF0F4')
+          .color(Theme.line(this.isDark))
 
         // 坚持天数：右下角橙色火焰水印（与学习日历坚持天数图标一致），点击跳转学习日历
         Stack() {
           SymbolGlyph($r('sys.symbol.flame'))
             // ⚠️【图案大小】修改此 fontSize 即可调整图案大小（当前 52）
             .fontSize(52)
-            .fontColor([Theme.warning])
+            .fontColor([Theme.warning(this.isDark)])
             .opacity(0.35)
             .rotate({ angle: -15 })
             .margin({ right: 4 })
@@ -214,10 +223,10 @@ export struct MineView {
             Text(`${this.learnedDays}`)
               .fontSize(22)
               .fontWeight(FontWeight.Bold)
-              .fontColor(Theme.ink)
+              .fontColor(Theme.ink(this.isDark))
             Text('坚持天数')
               .fontSize(12)
-              .fontColor(Theme.inkSecondary)
+              .fontColor(Theme.inkSecondary(this.isDark))
               .margin({ top: 4 })
           }
           .width('100%')
@@ -233,7 +242,7 @@ export struct MineView {
       }
       .width('100%')
     }
-    .backgroundColor(Theme.card)
+    .backgroundColor(Theme.card(this.isDark))
     .borderRadius(18)
     .padding(20)
     .width('100%')
@@ -241,12 +250,17 @@ export struct MineView {
 
   build() {
     Column() {
-      Text('我的')
-        .fontSize(30)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(Theme.ink)
-        .padding({ left: 24, top: 24, bottom: 8 })
-        .width('100%')
+      Row() {
+        Text('我的')
+          .fontSize(30)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(Theme.ink(this.isDark))
+          .layoutWeight(1)
+        // 右上角月亮按钮：与左侧标题对齐，点击切换深色/浅色模式
+        ThemeToggle()
+      }
+      .width('100%')
+      .padding({ left: 24, right: 24, top: 24, bottom: 8 })
 
       Scroll() {
         Column() {
@@ -257,18 +271,18 @@ export struct MineView {
           Row() {
             SymbolGlyph($r('sys.symbol.calendar'))
               .fontSize(20)
-              .fontColor([Theme.accent])
+              .fontColor([Theme.accent(this.isDark)])
             Text('学习日历')
               .fontSize(15)
-              .fontColor(Theme.ink)
+              .fontColor(Theme.ink(this.isDark))
               .layoutWeight(1)
               .margin({ left: 12 })
             SymbolGlyph($r('sys.symbol.chevron_right'))
               .fontSize(14)
-              .fontColor([Theme.inkTertiary])
+              .fontColor([Theme.inkTertiary(this.isDark)])
           }
           .width('100%')
-          .backgroundColor(Theme.card)
+          .backgroundColor(Theme.card(this.isDark))
           .borderRadius(18)
           .padding(20)
           .margin({ top: 14 })
@@ -280,22 +294,22 @@ export struct MineView {
           Row() {
             SymbolGlyph($r('sys.symbol.star'))
               .fontSize(20)
-              .fontColor([Theme.accent])
+              .fontColor([Theme.accent(this.isDark)])
             Text('单词本')
               .fontSize(15)
-              .fontColor(Theme.ink)
+              .fontColor(Theme.ink(this.isDark))
               .layoutWeight(1)
               .margin({ left: 12 })
             Text(`已收藏 ${this.favCount}个单词`)
               .fontSize(15)
-              .fontColor(Theme.inkSecondary)
+              .fontColor(Theme.inkSecondary(this.isDark))
             SymbolGlyph($r('sys.symbol.chevron_right'))
               .fontSize(14)
-              .fontColor([Theme.inkTertiary])
+              .fontColor([Theme.inkTertiary(this.isDark)])
               .margin({ left: 6 })
           }
           .width('100%')
-          .backgroundColor(Theme.card)
+          .backgroundColor(Theme.card(this.isDark))
           .borderRadius(18)
           .padding(20)
           .margin({ top: 14 })
@@ -307,22 +321,22 @@ export struct MineView {
           Row() {
             SymbolGlyph($r('sys.symbol.book'))
               .fontSize(20)
-              .fontColor([Theme.accent])
+              .fontColor([Theme.accent(this.isDark)])
             Text('当前词库')
               .fontSize(15)
-              .fontColor(Theme.ink)
+              .fontColor(Theme.ink(this.isDark))
               .layoutWeight(1)
               .margin({ left: 12 })
             Text(this.bookName)
               .fontSize(15)
-              .fontColor(Theme.inkSecondary)
+              .fontColor(Theme.inkSecondary(this.isDark))
             SymbolGlyph($r('sys.symbol.chevron_right'))
               .fontSize(14)
-              .fontColor([Theme.inkTertiary])
+              .fontColor([Theme.inkTertiary(this.isDark)])
               .margin({ left: 6 })
           }
           .width('100%')
-          .backgroundColor(Theme.card)
+          .backgroundColor(Theme.card(this.isDark))
           .borderRadius(18)
           .padding(20)
           .margin({ top: 14 })
@@ -335,10 +349,10 @@ export struct MineView {
             Row() {
               SymbolGlyph($r('sys.symbol.flag'))
                 .fontSize(20)
-                .fontColor([Theme.accent])
+                .fontColor([Theme.accent(this.isDark)])
               Text('每日目标')
                 .fontSize(15)
-                .fontColor(Theme.ink)
+                .fontColor(Theme.ink(this.isDark))
                 .margin({ left: 12 })
             }
             .width('100%')
@@ -346,8 +360,8 @@ export struct MineView {
               ForEach(TARGET_OPTIONS, (n: number) => {
                 Text(`${n}`)
                   .fontSize(14)
-                  .fontColor(this.target === n ? Color.White : Theme.inkSecondary)
-                  .backgroundColor(this.target === n ? Theme.accent : Theme.bg)
+                  .fontColor(this.target === n ? Color.White : Theme.inkSecondary(this.isDark))
+                  .backgroundColor(this.target === n ? Theme.accent(this.isDark) : Theme.bg(this.isDark))
                   .borderRadius(12)
                   .textAlign(TextAlign.Center)
                   .height(36)
@@ -367,12 +381,12 @@ export struct MineView {
             Row() {
               Text(this.isCustomTarget() ? `自定义目标：${this.target} 词` : '自定义目标')
                 .fontSize(14)
-                .fontColor(this.isCustomTarget() ? Theme.accent : Theme.inkSecondary)
+                .fontColor(this.isCustomTarget() ? Theme.accent(this.isDark) : Theme.inkSecondary(this.isDark))
                 .fontWeight(this.isCustomTarget() ? FontWeight.Medium : FontWeight.Normal)
                 .layoutWeight(1)
               SymbolGlyph($r('sys.symbol.chevron_right'))
                 .fontSize(14)
-                .fontColor([this.isCustomTarget() ? Theme.accent : Theme.inkTertiary])
+                .fontColor([this.isCustomTarget() ? Theme.accent(this.isDark) : Theme.inkTertiary(this.isDark)])
             }
             .width('100%')
             .margin({ top: 14 })
@@ -382,7 +396,7 @@ export struct MineView {
               }
             })
           }
-          .backgroundColor(Theme.card)
+          .backgroundColor(Theme.card(this.isDark))
           .borderRadius(18)
           .padding(20)
           .width('100%')
@@ -392,21 +406,21 @@ export struct MineView {
           Row() {
             SymbolGlyph($r('sys.symbol.info_circle'))
               .fontSize(20)
-              .fontColor([Theme.accent])
+              .fontColor([Theme.accent(this.isDark)])
             Text('关于与数据')
               .fontSize(15)
-              .fontColor(Theme.ink)
+              .fontColor(Theme.ink(this.isDark))
               .layoutWeight(1)
               .margin({ left: 12 })
             SymbolGlyph($r('sys.symbol.chevron_right'))
               .fontSize(14)
-              .fontColor([Theme.inkTertiary])
+              .fontColor([Theme.inkTertiary(this.isDark)])
           }
           .width('100%')
-          .backgroundColor(Theme.card)
+          .backgroundColor(Theme.card(this.isDark))
           .borderRadius(18)
           .padding(20)
-          .margin({ top: 14, bottom: 24 })
+          .margin({ top: 14, bottom: 104 })
           .onClick(() => {
             router.pushUrl({ url: 'pages/AboutPage' });
           })
@@ -418,6 +432,9 @@ export struct MineView {
       .layoutWeight(1)
       .scrollBar(BarState.Off)
       .align(Alignment.Top)
+      .onDidScroll((xOffset: number, yOffset: number, scrollState: ScrollState) => {
+        this.onScrollY(yOffset);
+      })
     }
     .width('100%')
     .height('100%')

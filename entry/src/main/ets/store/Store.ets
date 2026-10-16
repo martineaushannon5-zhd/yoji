@@ -9,6 +9,7 @@ interface PersistData {
   masteredAt: Record<string, string>;
   learnedLog: Record<string, string[]>;
   favorites: Record<string, string>;
+  swipeGuideShown: boolean;
   todayLearned: number;
   todayDate: string;
   streak: number;
@@ -20,6 +21,7 @@ interface PersistData {
   nickname: string;
   avatar: string;
   videoProgress: Record<string, number>;
+  darkMode: boolean;
 }
 
 // 全局学习进度存储，基于 Preferences 持久化
@@ -33,6 +35,8 @@ export class Store {
   learnedLog: Record<string, string[]> = {};
   // 收藏（单词本）：wordId -> 收藏日期，用于按收藏时间排序
   favorites: Record<string, string> = {};
+  // 学词页滑动引导是否已展示过（仅首次进入学词时显示一次）
+  swipeGuideShown: boolean = false;
   todayLearned: number = 0;
   todayDate: string = '';
   streak: number = 0;
@@ -45,6 +49,8 @@ export class Store {
   avatar: string = '';
   // 视频播放进度：videoId -> 已播放秒数（供播放页续播）
   videoProgress: Record<string, number> = {};
+  // 深色模式开关（切换主题后持久化，重启保持）
+  darkMode: boolean = false;
   private pref: preferences.Preferences | undefined = undefined;
 
   static get(): Store {
@@ -71,6 +77,7 @@ export class Store {
     this.masteredAt = data.masteredAt ?? {};
     this.learnedLog = data.learnedLog ?? {};
     this.favorites = data.favorites ?? {};
+    this.swipeGuideShown = data.swipeGuideShown ?? false;
     // 兼容旧数据：无学习日志时，由掌握日期回填，保证日历可展示历史掌握记录
     if (Object.keys(this.learnedLog).length === 0 && Object.keys(this.masteredAt).length > 0) {
       const ids = Object.keys(this.masteredAt);
@@ -97,6 +104,7 @@ export class Store {
     this.nickname = data.nickname ?? '';
     this.avatar = data.avatar ?? '';
     this.videoProgress = data.videoProgress ?? {};
+    this.darkMode = data.darkMode ?? false;
     // 跨天重置今日进度
     if (this.todayDate !== Store.today()) {
       this.todayLearned = 0;
@@ -186,6 +194,17 @@ export class Store {
     return true;
   }
 
+  // 是否已看过学词页的滑动引导
+  hasSeenSwipeGuide(): boolean {
+    return this.swipeGuideShown;
+  }
+
+  // 标记滑动引导已展示（仅首次进入学词页时调用）
+  async markSwipeGuideSeen(): Promise<void> {
+    this.swipeGuideShown = true;
+    await this.save();
+  }
+
   async setDailyTarget(n: number): Promise<void> {
     this.dailyTarget = Math.max(5, Math.min(50, n));
     await this.save();
@@ -193,6 +212,12 @@ export class Store {
 
   async setCurrentBook(bookId: string): Promise<void> {
     this.currentBookId = bookId;
+    await this.save();
+  }
+
+  // 保存深色模式开关（AppStorage 由 UI 的 @StorageLink 同步，这里负责持久化）
+  async setDarkMode(dark: boolean): Promise<void> {
+    this.darkMode = dark;
     await this.save();
   }
 
@@ -242,6 +267,7 @@ export class Store {
       masteredAt: this.masteredAt,
       learnedLog: this.learnedLog,
       favorites: this.favorites,
+      swipeGuideShown: this.swipeGuideShown,
       todayLearned: this.todayLearned,
       todayDate: this.todayDate,
       streak: this.streak,
@@ -252,7 +278,8 @@ export class Store {
       token: this.token,
       nickname: this.nickname,
       avatar: this.avatar,
-      videoProgress: this.videoProgress
+      videoProgress: this.videoProgress,
+      darkMode: this.darkMode
     };
     await this.pref.put('data', JSON.stringify(data));
     await this.pref.flush();

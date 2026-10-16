@@ -19,6 +19,8 @@ struct SplashPage {
     // 先初始化全局存储，确保能读取登录态
     const ctx = getContext(this) as common.UIAbilityContext;
     await this.store.init(ctx);
+    // 恢复上次选择的主题（深色/浅色），供各页面 @StorageLink 读取
+    AppStorage.setOrCreate('darkMode', this.store.darkMode);
     // 品牌文字淡入
     animateTo({ duration: 600, curve: Curve.EaseOut }, () => {
       this.fadeIn = 1;

@@ -1,5 +1,6 @@
 import { router } from '@kit.ArkUI';
 import { Theme } from '../common/Theme';
+import { ThemeToggle } from './ThemeToggle';
 import { VIDEO_LIST } from '../data/VideoData';
 import { VideoItem } from '../model/VideoModel';
 
@@ -8,6 +9,10 @@ import { VideoItem } from '../model/VideoModel';
 export struct VideoListView {
   @State keyword: string = '';
   @State shown: VideoItem[] = VIDEO_LIST;
+  // 深色模式开关：双向绑定 AppStorage，切换后本视图配色同步刷新
+  @StorageLink('darkMode') isDark: boolean = false;
+  // 滚动位置回调：用于首页底部导航栏的收起/展开联动
+  onScrollY: (y: number) => void = (y: number): void => {};
 
   aboutToAppear(): void {
     this.shown = VIDEO_LIST;
@@ -51,13 +56,13 @@ export struct VideoListView {
         Text(item.title)
           .fontSize(15)
           .fontWeight(FontWeight.Medium)
-          .fontColor(Theme.ink)
+          .fontColor(Theme.ink(this.isDark))
           .maxLines(2)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .width('100%')
         Text(`上传于 ${this.dateLabel(item.date)}`)
           .fontSize(12)
-          .fontColor(Theme.inkTertiary)
+          .fontColor(Theme.inkTertiary(this.isDark))
           .width('100%')
           .margin({ top: 8 })
       }
@@ -66,7 +71,7 @@ export struct VideoListView {
       .margin({ left: 12 })
     }
     .width('100%')
-    .backgroundColor(Theme.card)
+    .backgroundColor(Theme.card(this.isDark))
     .borderRadius(16)
     .padding(12)
     .margin({ top: 12 })
@@ -77,19 +82,26 @@ export struct VideoListView {
 
   build() {
     Column() {
-      Text('视频学习')
-        .fontSize(30)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(Theme.ink)
-        .padding({ left: 24, top: 24, bottom: 8 })
-        .width('100%')
+      Row() {
+        Text('视频学习')
+          .fontSize(30)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(Theme.ink(this.isDark))
+          .layoutWeight(1)
+        // 右上角月亮按钮：与左侧标题对齐，点击切换深色/浅色模式
+        ThemeToggle()
+      }
+      .width('100%')
+      .padding({ left: 24, right: 24, top: 24, bottom: 8 })
 
       // 搜索框
       Row() {
         Search({ value: this.keyword, placeholder: '搜索视频' })
           .height(40)
           .layoutWeight(1)
-          .backgroundColor(Theme.card)
+          .fontColor(Theme.ink(this.isDark))
+          .placeholderColor(Theme.inkTertiary(this.isDark))
+          .backgroundColor(Theme.card(this.isDark))
           .borderRadius(20)
           .onChange((v: string) => {
             this.keyword = v;
@@ -109,10 +121,10 @@ export struct VideoListView {
             Column() {
               SymbolGlyph($r('sys.symbol.play_circle'))
                 .fontSize(40)
-                .fontColor([Theme.inkTertiary])
+                .fontColor([Theme.inkTertiary(this.isDark)])
               Text('没有找到相关视频')
                 .fontSize(13)
-                .fontColor(Theme.inkSecondary)
+                .fontColor(Theme.inkSecondary(this.isDark))
                 .margin({ top: 10 })
             }
             .width('100%')
@@ -123,15 +135,19 @@ export struct VideoListView {
             }, (item: VideoItem) => item.id)
           }
         }
-        .padding({ left: 24, right: 24, top: 4, bottom: 24 })
+        // 底部留白加大，避免内容被悬浮导航栏遮挡
+        .padding({ left: 24, right: 24, top: 4, bottom: 104 })
         .width('100%')
       }
       .layoutWeight(1)
       .scrollBar(BarState.Off)
       .align(Alignment.Top)
+      .onDidScroll((xOffset: number, yOffset: number, scrollState: ScrollState) => {
+        this.onScrollY(yOffset);
+      })
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(Theme.bg)
+    .backgroundColor(Theme.bg(this.isDark))
   }
 }

@@ -9,6 +9,8 @@ export struct BookListView {
   @Prop tick: number = 0;
   // 作为独立页面使用时，由页面顶栏展示标题，此处隐藏内置标题
   @Prop showTitle: boolean = true;
+  // 深色模式开关：双向绑定 AppStorage，切换后本视图配色同步刷新
+  @StorageLink('darkMode') isDark: boolean = false;
   onMutate: () => void = (): void => {};
 
   private store: Store = Store.get();
@@ -42,7 +44,7 @@ export struct BookListView {
         Text('词库')
           .fontSize(30)
           .fontWeight(FontWeight.Bold)
-          .fontColor(Theme.ink)
+          .fontColor(Theme.ink(this.isDark))
           .padding({ left: 24, top: 24, bottom: 8 })
           .width('100%')
       }
@@ -56,10 +58,10 @@ export struct BookListView {
                   Text(book.name)
                     .fontSize(19)
                     .fontWeight(FontWeight.Bold)
-                    .fontColor(Theme.ink)
+                    .fontColor(Theme.ink(this.isDark))
                   Text(book.subtitle)
                     .fontSize(13)
-                    .fontColor(Theme.inkSecondary)
+                    .fontColor(Theme.inkSecondary(this.isDark))
                     .margin({ top: 5 })
                 }
                 .alignItems(HorizontalAlign.Start)
@@ -68,15 +70,15 @@ export struct BookListView {
                 if (this.store.currentBookId === book.id) {
                   Text('使用中')
                     .fontSize(12)
-                    .fontColor(Theme.accent)
-                    .backgroundColor(Theme.accentSoft)
+                    .fontColor(Theme.accent(this.isDark))
+                    .backgroundColor(Theme.accentSoft(this.isDark))
                     .borderRadius(10)
                     .padding({ left: 10, right: 10, top: 4, bottom: 4 })
                 } else {
                   Text('选择')
                     .fontSize(12)
-                    .fontColor(Theme.inkSecondary)
-                    .border({ width: 1, color: Theme.line, radius: 10 })
+                    .fontColor(Theme.inkSecondary(this.isDark))
+                    .border({ width: 1, color: Theme.line(this.isDark), radius: 10 })
                     .padding({ left: 10, right: 10, top: 4, bottom: 4 })
                 }
               }
@@ -88,12 +90,12 @@ export struct BookListView {
                   .width('100%')
                   .height(6)
                   .borderRadius(3)
-                  .backgroundColor(Theme.line)
+                  .backgroundColor(Theme.line(this.isDark))
                 Row()
                   .width(`${Math.round(this.learnedCount(book) * 100 / book.words.length)}%`)
                   .height(6)
                   .borderRadius(3)
-                  .backgroundColor(Theme.accent)
+                  .backgroundColor(Theme.accent(this.isDark))
               }
               .width('100%')
               .margin({ top: 18 })
@@ -101,12 +103,12 @@ export struct BookListView {
               Row() {
                 Text(`已掌握 ${this.learnedCount(book)} / ${book.words.length}`)
                   .fontSize(13)
-                  .fontColor(Theme.inkSecondary)
+                  .fontColor(Theme.inkSecondary(this.isDark))
                 Blank()
                 Button('开始学习')
                   .fontSize(13)
                   .type(ButtonType.Capsule)
-                  .backgroundColor(Theme.accent)
+                  .backgroundColor(Theme.accent(this.isDark))
                   .height(34)
                   .padding({ left: 16, right: 16 })
                   .onClick(() => {
@@ -116,7 +118,7 @@ export struct BookListView {
               .width('100%')
               .margin({ top: 12 })
             }
-            .backgroundColor(Theme.card)
+            .backgroundColor(Theme.card(this.isDark))
             .borderRadius(22)
             .padding(20)
             .width('100%')

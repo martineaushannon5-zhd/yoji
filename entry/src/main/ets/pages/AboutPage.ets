@@ -2,6 +2,7 @@ import { promptAction } from '@kit.ArkUI';
 import { router } from '@kit.ArkUI';
 import { Store } from '../store/Store';
 import { Theme } from '../common/Theme';
+import { ThemeToggle } from '../view/ThemeToggle';
 
 // ============================================================
 // ⚠️【版本更新内容编辑区】
@@ -50,9 +51,12 @@ const UPDATE_LOGS: UpdateLog[] = [
     version: 'v1.1.0',
     date: '2026-10-16',
     items: [
-      '全新上线：视频播放',
+      '全新上线：视频学习',
       '优化了“我的Yoji”页面布局',
-      '优化了“学习日历”的界面布局'
+      '优化了“学习日历”的界面布局',
+      '新增深色模式：各页面右上角月亮按钮一键切换',
+      '优化了底部导航栏的样式',
+      '全新操作逻辑：学单词时左右滑即可进行标记'
     ]
   }
 ];
@@ -61,6 +65,8 @@ const UPDATE_LOGS: UpdateLog[] = [
 @Entry
 @Component
 struct AboutPage {
+  // 深色模式开关：双向绑定 AppStorage，切换后页面配色同步刷新
+  @StorageLink('darkMode') isDark: boolean = false;
   private store: Store = Store.get();
 
   private async clearData(): Promise<void> {
@@ -73,8 +79,8 @@ struct AboutPage {
       title: '清空学习记录',
       message: '将删除所有单词进度与统计，且无法恢复。确定继续吗？',
       buttons: [
-        { text: '取消', color: Theme.inkSecondary },
-        { text: '清空', color: '#DC2626' }
+        { text: '取消', color: Theme.inkSecondary(this.isDark) },
+        { text: '清空', color: Theme.danger(this.isDark) }
       ]
     }).then((res) => {
       if (res.index === 1) {
@@ -91,22 +97,22 @@ struct AboutPage {
         Text(log.version)
           .fontSize(15)
           .fontWeight(FontWeight.Bold)
-          .fontColor(Theme.ink)
+          .fontColor(Theme.ink(this.isDark))
         Blank()
         Text(log.date)
           .fontSize(12)
-          .fontColor(Theme.inkTertiary)
+          .fontColor(Theme.inkTertiary(this.isDark))
       }
       .width('100%')
 
       ForEach(log.items, (item: string) => {
         Row() {
           Circle({ width: 5, height: 5 })
-            .fill(Theme.accent)
+            .fill(Theme.accent(this.isDark))
             .margin({ top: 5 })
           Text(item)
             .fontSize(13)
-            .fontColor(Theme.inkSecondary)
+            .fontColor(Theme.inkSecondary(this.isDark))
             .lineHeight(20)
             .layoutWeight(1)
             .margin({ left: 8 })
@@ -117,7 +123,7 @@ struct AboutPage {
       }, (item: string, idx: number) => `${log.version}-${idx}`)
     }
     .alignItems(HorizontalAlign.Start)
-    .backgroundColor(Theme.card)
+    .backgroundColor(Theme.card(this.isDark))
     .borderRadius(18)
     .padding(20)
     .width('100%')
@@ -131,7 +137,7 @@ struct AboutPage {
         Column() {
           SymbolGlyph($r('sys.symbol.chevron_left'))
             .fontSize(20)
-            .fontColor([Theme.ink])
+            .fontColor([Theme.ink(this.isDark)])
         }
         .width(40)
         .height(40)
@@ -143,13 +149,11 @@ struct AboutPage {
         Text('关于与数据')
           .fontSize(18)
           .fontWeight(FontWeight.Bold)
-          .fontColor(Theme.ink)
+          .fontColor(Theme.ink(this.isDark))
           .layoutWeight(1)
           .textAlign(TextAlign.Center)
-        Column() {
-        }
-        .width(40)
-        .height(40)
+        // 右上角月亮按钮：与标题行对齐，点击切换深色/浅色模式
+        ThemeToggle()
       }
       .width('100%')
       .padding({ left: 16, right: 16, top: 8, bottom: 4 })
@@ -170,14 +174,14 @@ struct AboutPage {
             Text('Yoji.')
               .fontSize(20)
               .fontWeight(FontWeight.Bold)
-              .fontColor(Theme.ink)
+              .fontColor(Theme.ink(this.isDark))
               .margin({ top: 12 })
             Text('v1.1.0')
               .fontSize(13)
-              .fontColor(Theme.inkSecondary)
+              .fontColor(Theme.inkSecondary(this.isDark))
               .margin({ top: 4 })
           }
-          .backgroundColor(Theme.card)
+          .backgroundColor(Theme.card(this.isDark))
           .borderRadius(24)
           .padding(24)
           .width('100%')
@@ -187,7 +191,7 @@ struct AboutPage {
           Text('版本更新')
             .fontSize(16)
             .fontWeight(FontWeight.Bold)
-            .fontColor(Theme.ink)
+            .fontColor(Theme.ink(this.isDark))
             .width('100%')
             .margin({ top: 24 })
 
@@ -199,18 +203,18 @@ struct AboutPage {
           Column() {
             Text('数据')
               .fontSize(15)
-              .fontColor(Theme.ink)
+              .fontColor(Theme.ink(this.isDark))
               .width('100%')
             Text('清空学习记录')
               .fontSize(15)
-              .fontColor('#DC2626')
+              .fontColor(Theme.danger(this.isDark))
               .width('100%')
               .margin({ top: 16 })
               .onClick(() => {
                 this.confirmClear();
               })
           }
-          .backgroundColor(Theme.card)
+          .backgroundColor(Theme.card(this.isDark))
           .borderRadius(18)
           .padding(20)
           .width('100%')
@@ -225,6 +229,6 @@ struct AboutPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(Theme.bg)
+    .backgroundColor(Theme.bg(this.isDark))
   }
 }

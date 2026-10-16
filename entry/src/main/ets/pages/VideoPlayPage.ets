@@ -1,5 +1,6 @@
 import { router, window } from '@kit.ArkUI';
 import { Theme } from '../common/Theme';
+import { ThemeToggle } from '../view/ThemeToggle';
 import { findVideo } from '../data/VideoData';
 import { VideoItem } from '../model/VideoModel';
 import { Store } from '../store/Store';
@@ -43,6 +44,8 @@ struct VideoPlayPage {
   @State seekHint: string = '';
   // 视频加载失败时的错误提示（用于排查播放问题）
   @State loadError: string = '';
+  // 深色模式开关：双向绑定 AppStorage，切换后页面配色同步刷新
+  @StorageLink('darkMode') isDark: boolean = false;
 
   aboutToAppear(): void {
     const params = router.getParams() as Record<string, string>;
@@ -280,7 +283,7 @@ struct VideoPlayPage {
               max: this.duration > 0 ? this.duration : 100
             })
               .blockColor(Color.White)
-              .selectedColor(Theme.accent)
+              .selectedColor(Theme.accent(this.isDark))
               .trackColor('rgba(255, 255, 255, 0.3)')
               .trackThickness(3)
               .height(20)
@@ -345,7 +348,7 @@ struct VideoPlayPage {
 
   build() {
     Stack() {
-      // 背景层：全屏时黑色铺满；非全屏时与学习日历一致（顶部三分之一渐变 + 下方三分之二纯白）
+      // 背景层：全屏时黑色铺满；非全屏时与学习日历一致（顶部三分之一渐变 + 下方三分之二纯白，深色下为深灰）
       if (this.fullscreen) {
         Column()
           .width('100%')
@@ -363,7 +366,7 @@ struct VideoPlayPage {
           Column()
             .width('100%')
             .layoutWeight(1)
-            .backgroundColor(Color.White)
+            .backgroundColor(Theme.surface(this.isDark))
         }
         .width('100%')
         .height('100%')
@@ -399,10 +402,8 @@ struct VideoPlayPage {
               .fontColor(Color.White)
               .layoutWeight(1)
               .textAlign(TextAlign.Center)
-            Column() {
-            }
-            .width(40)
-            .height(40)
+            // 右上角月亮按钮：与标题行对齐，点击切换深色/浅色模式
+            ThemeToggle()
           }
           .width('100%')
           .padding({ left: 16, right: 16, top: 8, bottom: 4 })
@@ -424,24 +425,24 @@ struct VideoPlayPage {
                   Text(this.video.title)
                     .fontSize(17)
                     .fontWeight(FontWeight.Bold)
-                    .fontColor(Theme.ink)
+                    .fontColor(Theme.ink(this.isDark))
                     .width('100%')
                   Text(`上传于 ${this.dateLabel(this.video.date)}`)
                     .fontSize(13)
-                    .fontColor(Theme.inkSecondary)
+                    .fontColor(Theme.inkSecondary(this.isDark))
                     .width('100%')
                     .margin({ top: 8 })
                   Divider()
                     .strokeWidth(1)
-                    .color(Theme.line)
+                    .color(Theme.line(this.isDark))
                     .margin({ top: 14, bottom: 14 })
                   Text('播放页粗略版本，后续将补充更多功能')
                     .fontSize(12)
-                    .fontColor(Theme.inkTertiary)
+                    .fontColor(Theme.inkTertiary(this.isDark))
                     .width('100%')
                 }
                 .alignItems(HorizontalAlign.Start)
-                .backgroundColor(Theme.card)
+                .backgroundColor(Theme.card(this.isDark))
                 .borderRadius(16)
                 .padding(16)
                 .width('100%')
@@ -463,4 +464,4 @@ struct VideoPlayPage {
     .width('100%')
     .height('100%')
   }
-}
+}                         

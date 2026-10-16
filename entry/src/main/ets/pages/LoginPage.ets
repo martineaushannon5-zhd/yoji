@@ -31,6 +31,8 @@ struct LoginPage {
   @State confirm: string = '';
   @State errorMsg: string = '';
   @State loading: boolean = false;
+  // 深色模式开关：双向绑定 AppStorage，切换后页面配色同步刷新
+  @StorageLink('darkMode') isDark: boolean = false;
   private store: Store = Store.get();
 
   // TODO: 【后端接口】登录请求。当前为本地模拟：账号密码非空即视为成功
@@ -113,8 +115,8 @@ struct LoginPage {
       Text('登录')
         .fontSize(15)
         .fontWeight(this.mode === 0 ? FontWeight.Bold : FontWeight.Normal)
-        .fontColor(this.mode === 0 ? Theme.accent : Theme.inkSecondary)
-        .backgroundColor(this.mode === 0 ? Theme.accentSoft : Theme.card)
+        .fontColor(this.mode === 0 ? Theme.accent(this.isDark) : Theme.inkSecondary(this.isDark))
+        .backgroundColor(this.mode === 0 ? Theme.accentSoft(this.isDark) : Theme.card(this.isDark))
         .borderRadius(20)
         .shadow({ radius: 12, color: 'rgba(0, 0, 0, 0.25)', offsetY: 4 })
         .padding({ left: 16, right: 16, top: 8, bottom: 8 })
@@ -126,8 +128,8 @@ struct LoginPage {
       Text('注册')
         .fontSize(15)
         .fontWeight(this.mode === 1 ? FontWeight.Bold : FontWeight.Normal)
-        .fontColor(this.mode === 1 ? Theme.accent : Theme.inkSecondary)
-        .backgroundColor(this.mode === 1 ? Theme.accentSoft : Theme.card)
+        .fontColor(this.mode === 1 ? Theme.accent(this.isDark) : Theme.inkSecondary(this.isDark))
+        .backgroundColor(this.mode === 1 ? Theme.accentSoft(this.isDark) : Theme.card(this.isDark))
         .borderRadius(20)
         .shadow({ radius: 12, color: 'rgba(0, 0, 0, 0.25)', offsetY: 4 })
         .padding({ left: 16, right: 16, top: 8, bottom: 8 })
@@ -164,7 +166,9 @@ struct LoginPage {
             TextInput({ placeholder: '请输入账号', text: this.account })
               .height(50)
               .fontSize(15)
-              .backgroundColor(Theme.bg)
+              .fontColor(Theme.ink(this.isDark))
+              .placeholderColor(Theme.inkTertiary(this.isDark))
+              .backgroundColor(Theme.bg(this.isDark))
               .borderRadius(14)
               .padding({ left: 16, right: 16 })
               .onChange((value: string) => {
@@ -176,7 +180,9 @@ struct LoginPage {
               .fontSize(15)
               .type(InputType.Password)
               .showPasswordIcon(true)
-              .backgroundColor(Theme.bg)
+              .fontColor(Theme.ink(this.isDark))
+              .placeholderColor(Theme.inkTertiary(this.isDark))
+              .backgroundColor(Theme.bg(this.isDark))
               .borderRadius(14)
               .padding({ left: 16, right: 16 })
               .margin({ top: 14 })
@@ -190,7 +196,9 @@ struct LoginPage {
                 .fontSize(15)
                 .type(InputType.Password)
                 .showPasswordIcon(true)
-                .backgroundColor(Theme.bg)
+                .fontColor(Theme.ink(this.isDark))
+                .placeholderColor(Theme.inkTertiary(this.isDark))
+                .backgroundColor(Theme.bg(this.isDark))
                 .borderRadius(14)
                 .padding({ left: 16, right: 16 })
                 .margin({ top: 14 })
@@ -202,7 +210,7 @@ struct LoginPage {
             if (this.errorMsg !== '') {
               Text(this.errorMsg)
                 .fontSize(13)
-                .fontColor('#DC2626')
+                .fontColor(Theme.danger(this.isDark))
                 .margin({ top: 12 })
                 .width('100%')
             }
@@ -211,7 +219,7 @@ struct LoginPage {
               .fontSize(16)
               .fontWeight(FontWeight.Medium)
               .type(ButtonType.Capsule)
-              .backgroundColor(Theme.accent)
+              .backgroundColor(Theme.accent(this.isDark))
               .shadow({ radius: 16, color: 'rgba(61, 90, 241, 0.45)', offsetY: 6 })
               .height(52)
               .width('100%')
@@ -220,7 +228,7 @@ struct LoginPage {
                 this.handleSubmit();
               })
           }
-          .backgroundColor(Theme.card)
+          .backgroundColor(Theme.card(this.isDark))
           .borderRadius(24)
           .shadow({ radius: 24, color: 'rgba(0, 0, 0, 0.30)', offsetY: 8 })
           .padding(24)
