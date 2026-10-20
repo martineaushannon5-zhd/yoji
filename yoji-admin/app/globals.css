@@ -1,0 +1,132 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Claude 风格：纸张 / 深咖 / 赤陶 */
+    --background: 40 20% 97%;
+    --foreground: 34 8% 16%;
+
+    --paper: 40 20% 97%;
+    --ink: 34 8% 16%;
+    --terracotta: 15 63% 60%;
+    --terracotta-soft: 18 55% 94%;
+
+    --card: 40 33% 99%;
+    --card-foreground: 34 8% 16%;
+    --popover: 40 33% 99%;
+    --popover-foreground: 34 8% 16%;
+
+    --primary: 15 63% 60%;
+    --primary-foreground: 40 33% 99%;
+
+    --secondary: 38 24% 94%;
+    --secondary-foreground: 34 8% 16%;
+
+    --muted: 38 22% 94%;
+    --muted-foreground: 32 7% 42%;
+
+    --accent: 18 55% 94%;
+    --accent-foreground: 15 55% 38%;
+
+    --destructive: 4 62% 48%;
+    --destructive-foreground: 40 33% 99%;
+
+    --border: 36 15% 88%;
+    --input: 36 15% 88%;
+    --ring: 15 63% 60%;
+
+    --chart-1: 15 63% 60%;
+    --chart-2: 32 50% 55%;
+    --chart-3: 150 14% 45%;
+    --chart-4: 25 25% 38%;
+    --chart-5: 45 38% 72%;
+
+    --sidebar: 40 25% 98%;
+    --sidebar-foreground: 34 8% 16%;
+    --sidebar-primary: 15 63% 60%;
+    --sidebar-primary-foreground: 40 33% 99%;
+    --sidebar-accent: 18 55% 94%;
+    --sidebar-accent-foreground: 15 55% 38%;
+    --sidebar-border: 36 15% 88%;
+    --sidebar-ring: 15 63% 60%;
+
+    --radius: 0.75rem;
+
+    --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system,
+      "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-serif: "Lora Variable", ui-serif, Georgia, "Songti SC", "SimSun",
+      serif;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-serif font-medium tracking-tight text-ink;
+  }
+
+  ::selection {
+    background: hsl(var(--terracotta) / 0.22);
+    color: hsl(var(--ink));
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* 极淡的纸面网点，只在需要时局部使用 */
+  .paper-grid {
+    background-image: radial-gradient(
+      hsl(var(--ink) / 0.055) 0.6px,
+      transparent 0.6px
+    );
+    background-size: 22px 22px;
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border: 3px solid hsl(var(--background));
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.45);
+}

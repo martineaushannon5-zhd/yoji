@@ -1,13 +1,15 @@
 import { router } from '@kit.ArkUI';
 import { Theme } from '../common/Theme';
-import { VIDEO_LIST } from '../data/VideoData';
+import { setRemoteVideos, toVideoItems, videoList } from '../data/VideoData';
+import { Api, VideoListResult } from '../common/Api';
 import { VideoItem } from '../model/VideoModel';
 
 // 视频学习视图：搜索框 + 视频卡片列表（缩略图、标题、上传日期）
 @Component
 export struct VideoListView {
   @State keyword: string = '';
-  @State shown: VideoItem[] = VIDEO_LIST;
+  @State all: VideoItem[] = videoList();
+  @State shown: VideoItem[] = videoList();
   // 深色模式开关：双向绑定 AppStorage，切换后本视图配色同步刷新
   @StorageLink('darkMode') isDark: boolean = false;
   // 滚动位置回调：用于首页底部导航栏的收起/展开联动
@@ -16,23 +18,37 @@ export struct VideoListView {
   @State enter: boolean = false;
 
   aboutToAppear(): void {
-    this.shown = VIDEO_LIST;
+    this.all = videoList();
+    this.shown = this.all;
+    this.loadRemoteVideos();
     setTimeout(() => {
       this.enter = true;
     }, 80);
+  }
+
+  // 从后端拉取视频列表；失败时静默回退到远程兜底列表
+  private async loadRemoteVideos(): Promise<void> {
+    const result: VideoListResult = await Api.fetchVideos();
+    if (!result.ok || result.videos.length === 0) {
+      return;
+    }
+    const items: VideoItem[] = toVideoItems(result.videos);
+    setRemoteVideos(items);
+    this.all = items;
+    this.filter();
   }
 
   // 按标题关键字过滤视频
   private filter(): void {
     const kw = this.keyword.trim();
     if (kw === '') {
-      this.shown = VIDEO_LIST;
+      this.shown = this.all;
       return;
     }
     const list: VideoItem[] = [];
-    for (let i = 0; i < VIDEO_LIST.length; i++) {
-      if (VIDEO_LIST[i].title.indexOf(kw) >= 0) {
-        list.push(VIDEO_LIST[i]);
+    for (let i = 0; i < this.all.length; i++) {
+      if (this.all[i].title.indexOf(kw) >= 0) {
+        list.push(this.all[i]);
       }
     }
     this.shown = list;

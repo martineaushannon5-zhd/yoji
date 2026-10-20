@@ -1,0 +1,18 @@
+{
+  "network-security-config": {
+    "base-config": {
+      "cleartextTrafficPermitted": true
+    },
+    "domain-config": [
+      {
+        "cleartextTrafficPermitted": true,
+        "domains": [
+          {
+            "include-subdomains": true,
+            "name": "yoji.zhdstudy.cyou"
+          }
+        ]
+      }
+    ]
+  }
+}

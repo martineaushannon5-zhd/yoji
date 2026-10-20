@@ -816,6 +816,13 @@ struct VideoPlayPage {
                         .fontColor(Theme.inkSecondary(this.isDark))
                         .width('100%')
                         .margin({ top: 8 })
+                      if (this.video.description !== '') {
+                        Text(this.video.description)
+                          .fontSize(12)
+                          .fontColor(Theme.inkTertiary(this.isDark))
+                          .width('100%')
+                          .margin({ top: 6 })
+                      }
                     }
                     .alignItems(HorizontalAlign.Start)
                     .layoutWeight(1)

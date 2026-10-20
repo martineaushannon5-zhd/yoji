@@ -2,6 +2,7 @@ import { preferences } from '@kit.ArkData';
 import { common } from '@kit.AbilityKit';
 import { STATUS_LEARNING, STATUS_MASTERED, STATUS_NEW, Word } from '../model/WordModel';
 import { CUSTOM_BOOK } from '../data/WordData';
+import { ProgressSnapshot } from '../model/ProgressModel';
 
 interface PersistData {
   currentBookId: string;
@@ -19,6 +20,7 @@ interface PersistData {
   lastLearnDate: string;
   isLoggedIn: boolean;
   token: string;
+  userId: string;
   nickname: string;
   avatar: string;
   gender: string;
@@ -51,6 +53,8 @@ export class Store {
   lastLearnDate: string = '';
   isLoggedIn: boolean = false;
   token: string = '';
+  // 上一次登录的用户 id：换账号登录时用于清空上一个账号的本地进度
+  userId: string = '';
   nickname: string = '';
   avatar: string = '';
   // 性别（男/女）与生日（YYYY-MM-DD），由“编辑资料”页维护
@@ -64,7 +68,12 @@ export class Store {
   darkMode: boolean = false;
   // 用户在视频页手动添加的单词（自填词库），由 Store 统一持久化
   customWords: Word[] = [];
+  // 云端进度版本号：来自后端，用于覆盖写入时的乐观锁
+  syncVersion: number = 0;
+  // 每次持久化后的回调：由启动页注册为「防抖上云」，Store 本身不依赖网络层
+  onSaved: (() => void) | undefined = undefined;
   private pref: preferences.Preferences | undefined = undefined;
+  private initialized: boolean = false;
 
   static get(): Store {
     if (!Store.instance) {
@@ -81,6 +90,10 @@ export class Store {
   }
 
   async init(context: common.UIAbilityContext): Promise<void> {
+    // 启动页与首页都会调用 init，这里做幂等保护，避免重复读盘覆盖内存中的最新进度
+    if (this.initialized) {
+      return;
+    }
     this.pref = await preferences.getPreferences(context, 'wancizhan');
     const raw = await this.pref.get('data', '{}') as string;
     const data: PersistData = JSON.parse(raw) as PersistData;
@@ -118,6 +131,7 @@ export class Store {
     this.lastLearnDate = data.lastLearnDate ?? '';
     this.isLoggedIn = data.isLoggedIn ?? false;
     this.token = data.token ?? '';
+    this.userId = data.userId ?? '';
     this.nickname = data.nickname ?? '';
     this.avatar = data.avatar ?? '';
     this.gender = data.gender ?? '';
@@ -134,6 +148,89 @@ export class Store {
       this.todayDate = Store.today();
       await this.save();
     }
+    this.initialized = true;
+  }
+
+  // 本地是否有真实学习数据（用于判断登录后是否需要用云端覆盖本地）
+  hasLearningData(): boolean {
+    return Object.keys(this.statusMap).length > 0 ||
+      Object.keys(this.learnedLog).length > 0 ||
+      Object.keys(this.favorites).length > 0 ||
+      Object.keys(this.favoriteVideos).length > 0 ||
+      Object.keys(this.masteredAt).length > 0 ||
+      this.customWords.length > 0 ||
+      this.totalLearned > 0;
+  }
+
+  // 导出与后端约定的进度快照（不含登录态字段）
+  toSnapshot(): ProgressSnapshot {
+    const snapshot: ProgressSnapshot = {
+      currentBookId: this.currentBookId,
+      dailyTarget: this.dailyTarget,
+      statusMap: this.statusMap,
+      masteredAt: this.masteredAt,
+      learnedLog: this.learnedLog,
+      favorites: this.favorites,
+      swipeGuideShown: this.swipeGuideShown,
+      todayLearned: this.todayLearned,
+      todayDate: this.todayDate,
+      streak: this.streak,
+      totalLearned: this.totalLearned,
+      learnedDays: this.learnedDays,
+      lastLearnDate: this.lastLearnDate,
+      videoProgress: this.videoProgress,
+      darkMode: this.darkMode,
+      nickname: this.nickname,
+      gender: this.gender,
+      birthday: this.birthday,
+      favoriteVideos: this.favoriteVideos,
+      customWords: this.customWords
+    };
+    return snapshot;
+  }
+
+  // 应用云端返回的进度快照（登录 / 启动同步时调用），保留本地登录态与本地头像
+  async applySnapshot(snapshot: ProgressSnapshot): Promise<void> {
+    this.currentBookId = snapshot.currentBookId;
+    this.dailyTarget = snapshot.dailyTarget;
+    this.statusMap = snapshot.statusMap;
+    this.masteredAt = snapshot.masteredAt;
+    this.learnedLog = snapshot.learnedLog;
+    this.favorites = snapshot.favorites;
+    this.swipeGuideShown = snapshot.swipeGuideShown;
+    this.todayLearned = snapshot.todayLearned;
+    this.todayDate = snapshot.todayDate;
+    this.streak = snapshot.streak;
+    this.totalLearned = snapshot.totalLearned;
+    this.learnedDays = snapshot.learnedDays;
+    this.lastLearnDate = snapshot.lastLearnDate;
+    this.videoProgress = snapshot.videoProgress;
+    this.darkMode = snapshot.darkMode;
+    // 旧版后端不返回 v1.2.0 新增字段，缺失时保留本地数据，避免被默认值清空
+    if (snapshot.nickname !== undefined && snapshot.nickname !== '') {
+      this.nickname = snapshot.nickname;
+    }
+    if (snapshot.gender !== undefined) {
+      this.gender = snapshot.gender;
+    }
+    if (snapshot.birthday !== undefined) {
+      this.birthday = snapshot.birthday;
+    }
+    if (snapshot.favoriteVideos !== undefined) {
+      this.favoriteVideos = snapshot.favoriteVideos;
+    }
+    if (snapshot.customWords !== undefined) {
+      this.customWords = snapshot.customWords;
+      CUSTOM_BOOK.words = this.customWords;
+    }
+    // 头像目前是设备本地沙箱路径，不能跨设备同步，应用快照时保留本地头像
+    // 云端快照可能来自别的日期：跨天时今日进度归零
+    if (this.todayDate !== Store.today()) {
+      this.todayLearned = 0;
+      this.todayDate = Store.today();
+    }
+    // 应用云端数据时不再回调上云，避免「拉取 → 推送」循环
+    await this.save(false);
   }
 
   statusOf(wordId: string): number {
@@ -179,10 +276,25 @@ export class Store {
     return true;
   }
 
+  private static yesterday(): string {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    const month = (d.getMonth() + 1).toString();
+    const day = d.getDate().toString();
+    return `${d.getFullYear()}-${month}-${day}`;
+  }
+
   // 任意一次学习行为（含复习已掌握词）都算坚持一天
   private markTodayActive(): void {
-    if (this.lastLearnDate !== Store.today()) {
-      this.lastLearnDate = Store.today();
+    const today = Store.today();
+    if (this.lastLearnDate !== today) {
+      // 昨天也学过则连续 +1，否则从今天重新计数
+      if (this.lastLearnDate === Store.yesterday()) {
+        this.streak += 1;
+      } else {
+        this.streak = 1;
+      }
+      this.lastLearnDate = today;
       this.learnedDays += 1;
     }
   }
@@ -215,6 +327,8 @@ export class Store {
         await this.save();
         return true;
       }
+      // 状态没变，但今天的学习记录 / 连续天数可能已更新，仍需落盘
+      await this.save();
       return false;
     }
     this.statusMap[wordId] = STATUS_MASTERED;
@@ -258,12 +372,46 @@ export class Store {
   }
 
   // 登录/注册成功后保存登录态与用户信息（token/nickname/avatar 由后端接口返回）
-  async login(token: string, nickname: string = '', avatar: string = ''): Promise<void> {
+  async login(token: string, nickname: string = '', avatar: string = '', userId: string = ''): Promise<void> {
+    // 换账号：清掉上一个账号留在本机的进度，避免被推到新账号
+    if (this.userId !== '' && userId !== '' && this.userId !== userId) {
+      this.resetProgress();
+    }
+    if (userId !== '') {
+      this.userId = userId;
+    }
     this.token = token;
     this.nickname = nickname;
-    this.avatar = avatar;
+    // 后端没有头像上传时 avatar 为空：保留用户在本机设置的头像
+    if (avatar !== '') {
+      this.avatar = avatar;
+    }
     this.isLoggedIn = true;
+    // 换账号后云端版本号失效，等待 bootstrap 拉取
+    this.syncVersion = 0;
     await this.save();
+  }
+
+  // 清空学习进度（保留词库、每日目标、深色模式等偏好）
+  private resetProgress(): void {
+    this.statusMap = {};
+    this.masteredAt = {};
+    this.learnedLog = {};
+    this.favorites = {};
+    this.favoriteVideos = {};
+    this.videoProgress = {};
+    this.customWords = [];
+    CUSTOM_BOOK.words = this.customWords;
+    this.todayLearned = 0;
+    this.todayDate = Store.today();
+    this.streak = 0;
+    this.totalLearned = 0;
+    this.learnedDays = 0;
+    this.lastLearnDate = '';
+    // 换账号时资料也重置，避免上一个账号的昵称/头像串到新账号
+    this.gender = '';
+    this.birthday = '';
+    this.avatar = '';
   }
 
   // 更新个人资料：昵称/性别/生日/头像（头像为应用沙箱内文件路径）
@@ -314,6 +462,7 @@ export class Store {
     this.avatar = '';
     this.gender = '';
     this.birthday = '';
+    this.syncVersion = 0;
     await this.save();
   }
 
@@ -372,6 +521,7 @@ export class Store {
 
   async clearAll(): Promise<void> {
     this.statusMap = {};
+    this.masteredAt = {};
     this.learnedLog = {};
     this.todayLearned = 0;
     this.streak = 0;
@@ -381,7 +531,8 @@ export class Store {
     await this.save();
   }
 
-  private async save(): Promise<void> {
+  // notify=false 用于应用云端快照，避免触发「拉取 → 推送」循环
+  private async save(notify: boolean = true): Promise<void> {
     if (!this.pref) {
       return;
     }
@@ -401,6 +552,7 @@ export class Store {
       lastLearnDate: this.lastLearnDate,
       isLoggedIn: this.isLoggedIn,
       token: this.token,
+      userId: this.userId,
       nickname: this.nickname,
       avatar: this.avatar,
       gender: this.gender,
@@ -412,5 +564,9 @@ export class Store {
     };
     await this.pref.put('data', JSON.stringify(data));
     await this.pref.flush();
+    const callback = this.onSaved;
+    if (notify && callback !== undefined) {
+      callback();
+    }
   }
 }

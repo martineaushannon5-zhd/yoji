@@ -33,6 +33,8 @@ struct Index {
   @State activeTab: number = 0;
   // 深色模式开关：双向绑定 AppStorage，切换后页面配色同步刷新
   @StorageLink('darkMode') isDark: boolean = false;
+  // 云端同步完成标记：CloudSync 应用云端快照后自增，驱动首页重新读取 Store
+  @StorageLink('syncTick') @Watch('onCloudSync') syncTick: number = 0;
   // 底部导航栏滚动联动：内容上滑时收起，下滑时恢复
   @State tabBarHidden: boolean = false;
   // tick 变化（onPageShow、学习数据变更）时通过 @Watch 同步快照，驱动首页数据刷新
@@ -69,6 +71,11 @@ struct Index {
 
   // 从学习页返回时刷新今日进度与词库进度
   onPageShow(): void {
+    this.tick += 1;
+  }
+
+  // 云端进度已应用：立即刷新首页统计
+  private onCloudSync(): void {
     this.tick += 1;
   }
 

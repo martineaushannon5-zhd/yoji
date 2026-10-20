@@ -1,0 +1,36 @@
+[Unit]
+Description=Yoji API (English vocabulary app backend)
+Documentation=file:///opt/yoji/server/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=yoji
+Group=yoji
+WorkingDirectory=/opt/yoji/server
+EnvironmentFile=/opt/yoji/server/.env
+ExecStart=/usr/bin/node src/server.js
+Restart=always
+RestartSec=3
+KillSignal=SIGTERM
+TimeoutStopSec=15
+
+# ---- 基础加固 ----
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+ReadWritePaths=/opt/yoji/data /opt/yoji/media
+
+# 2C2G 小机器：限制日志与文件句柄
+StandardOutput=journal
+StandardError=journal
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

@@ -1,6 +1,7 @@
 import { router } from '@kit.ArkUI';
 import { Theme } from '../common/Theme';
-import { findVideo } from '../data/VideoData';
+import { findVideo, setRemoteVideos, toVideoItems } from '../data/VideoData';
+import { Api, VideoListResult } from '../common/Api';
 import { Store } from '../store/Store';
 import { VideoItem } from '../model/VideoModel';
 
@@ -23,6 +24,17 @@ struct FavoriteVideoPage {
   private store: Store = Store.get();
 
   aboutToAppear(): void {
+    this.rebuild();
+    this.loadRemoteVideos();
+  }
+
+  // 直接进入“喜欢的视频”时，先拉取一遍远端列表，保证新视频也能被解析出来
+  private async loadRemoteVideos(): Promise<void> {
+    const result: VideoListResult = await Api.fetchVideos();
+    if (!result.ok || result.videos.length === 0) {
+      return;
+    }
+    setRemoteVideos(toVideoItems(result.videos));
     this.rebuild();
   }
 

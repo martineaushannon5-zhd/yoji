@@ -4,12 +4,23 @@
     "type": "entry",
     "description": "$string:module_desc",
     "mainElement": "EntryAbility",
+    "metadata": [
+      {
+        "name": "ohos.net.networkSecurityConfig",
+        "resource": "$profile:network_config"
+      }
+    ],
     "deviceTypes": [
       "phone"
     ],
     "deliveryWithInstall": true,
     "installationFree": false,
     "pages": "$profile:main_pages",
+    "requestPermissions": [
+      {
+        "name": "ohos.permission.INTERNET"
+      }
+    ],
     "abilities": [
       {
         "name": "EntryAbility",

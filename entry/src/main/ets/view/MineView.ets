@@ -1,6 +1,7 @@
-import { router } from '@kit.ArkUI';
+import { promptAction, router } from '@kit.ArkUI';
 import { Store } from '../store/Store';
 import { Theme } from '../common/Theme';
+import { CloudSync } from '../common/CloudSync';
 import { ThemeToggle } from './ThemeToggle';
 import { getBook } from '../data/WordData';
 
@@ -131,6 +132,38 @@ export struct MineView {
     router.pushUrl({ url: 'pages/LoginPage' });
   }
 
+  // 头像既可能是本地沙箱路径，也可能是后端返回的 http(s) URL
+  private avatarUri(): string {
+    const value = this.avatar;
+    if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('file://')) {
+      return value;
+    }
+    return `file://${value}`;
+  }
+
+  // 退出登录：先确认，再同步清理服务端 token 与本地登录态
+  private confirmLogout(): void {
+    promptAction.showDialog({
+      title: '退出登录',
+      message: '退出后本机仍保留学习进度，重新登录可继续同步。确定退出吗？',
+      buttons: [
+        { text: '取消', color: Theme.inkSecondary(this.isDark) },
+        { text: '退出', color: Theme.danger(this.isDark) }
+      ]
+    }).then((res) => {
+      if (res.index === 1) {
+        this.doLogout();
+      }
+    });
+  }
+
+  private async doLogout(): Promise<void> {
+    await CloudSync.logout();
+    this.syncFromStore();
+    this.onMutate();
+    promptAction.showToast({ message: '已退出登录' });
+  }
+
   // 用户信息卡：头像 + 昵称（或“请先登录”），下方为学习数据统计
   @Builder
   UserCard() {
@@ -138,7 +171,7 @@ export struct MineView {
       Row() {
         // 头像：已上传头像时展示图片，否则展示占位图标（点击卡片进入编辑资料页更换）
         if (this.isLoggedIn && this.avatar !== '') {
-          Image('file://' + this.avatar)
+          Image(this.avatarUri())
             .width(64)
             .height(64)
             .borderRadius(32)
@@ -518,7 +551,7 @@ export struct MineView {
           .borderRadius(18)
           .shadow({ radius: 12, color: 'rgba(27,30,40,0.12)', offsetX: 0, offsetY: 6 })
           .padding(20)
-          .margin({ top: 14, bottom: 104 })
+          .margin({ top: 14 })
           .clickEffect({ level: ClickEffectLevel.LIGHT })
           .translate({ y: this.enter ? 0 : 28 })
           .opacity(this.enter ? 1 : 0)
@@ -526,6 +559,29 @@ export struct MineView {
           .onClick(() => {
             router.pushUrl({ url: 'pages/AboutPage' });
           })
+
+          // 退出登录（仅登录后展示）
+          if (this.isLoggedIn) {
+            Text('退出登录')
+              .fontSize(15)
+              .fontColor(Theme.danger(this.isDark))
+              .textAlign(TextAlign.Center)
+              .width('100%')
+              .height(52)
+              .backgroundColor(Theme.glass(this.isDark))
+              .backgroundBlurStyle(BlurStyle.Thin)
+              .border({ width: 1, color: Theme.glassBorder(this.isDark) })
+              .borderRadius(18)
+              .margin({ top: 14, bottom: 104 })
+              .onClick(() => {
+                this.confirmLogout();
+              })
+          } else {
+            // 未登录时保留底部留白，避免被悬浮导航栏遮挡
+            Column()
+              .height(104)
+              .width('100%')
+          }
         }
         .padding({ left: 24, right: 24 })
         .constraintSize({ minHeight: '100%' })

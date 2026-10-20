@@ -1,25 +1,20 @@
-  import { router } from '@kit.ArkUI';
+import { router } from '@kit.ArkUI';
+import { Api, AuthData, AuthResult } from '../common/Api';
+import { CloudSync } from '../common/CloudSync';
 import { Store } from '../store/Store';
 import { Theme } from '../common/Theme';
 
 // ============================================================
-// ⚠️【后端接口标记】登录 / 注册接口约定（请后端同学按此对接）
+// 登录 / 注册：接入远程 Node 后端（server/）
 //
-// 登录接口：POST /api/auth/login
-//   入参：{ account: string, password: string }
-//   出参：{ code: number, message: string, data: { token: string, userId: string, nickname: string, avatar: string } }
+// POST /api/auth/login    入参 { account, password }
+// POST /api/auth/register 入参 { account, password }
+// 出参 { code: 0, message, data: { token, userId, account, nickname, avatar } }
 //
-// 注册接口：POST /api/auth/register
-//   入参：{ account: string, password: string }
-//   出参：{ code: number, message: string, data: { token: string, userId: string, nickname: string, avatar: string } }
-//
-// 说明：data 中的 nickname / avatar 为用户昵称与头像地址，用于“我的”页展示；
-//      avatar 可为空字符串（前端展示占位头像）。
-//
-// 前端已完成：入参校验、错误提示、登录态保存（Store.login(token)）、
-//           页面跳转。后端就绪后，请将下方 requestLogin / requestRegister
-//           中的模拟实现替换为真实网络请求（建议使用 @kit.NetworkKit 的
-//           http 模块，见方法内注释示例）。
+// 登录成功后：
+//   1. Store.login(token, nickname, avatar, userId) 保存登录态
+//   2. CloudSync.bootstrap() 拉取/合并云端学习进度
+//   3. 返回来源页或进入首页
 // ============================================================
 
 @Entry
@@ -35,32 +30,7 @@ struct LoginPage {
   @StorageLink('darkMode') isDark: boolean = false;
   private store: Store = Store.get();
 
-  // TODO: 【后端接口】登录请求。当前为本地模拟：账号密码非空即视为成功
-  private async requestLogin(account: string, password: string): Promise<boolean> {
-    // 真实实现示例：
-    //   import { http } from '@kit.NetworkKit';
-    //   const resp = await http.createHttp().request('https://api.example.com/api/auth/login', {
-    //     method: http.RequestMethod.POST,
-    //     header: { 'Content-Type': 'application/json' },
-    //     extraData: JSON.stringify({ account: account, password: password }),
-    //     expectDataType: http.HttpDataType.STRING
-    //   });
-    //   const body = JSON.parse(resp.result as string);
-    //   if (body.code === 0) {
-    //     await this.store.login(body.data.token, body.data.nickname, body.data.avatar);
-    //     return true;
-    //   }
-    //   return false;
-    return account.length > 0 && password.length > 0;
-  }
-
-  // TODO: 【后端接口】注册请求。当前为本地模拟：账号密码非空即视为成功
-  private async requestRegister(account: string, password: string): Promise<boolean> {
-    // 真实实现示例：同 requestLogin，URL 换成 /api/auth/register
-    return account.length > 0 && password.length > 0;
-  }
-
-  // 提交登录 / 注册
+  // 提交登录 / 注册：调用后端接口，失败时直接展示服务端返回的文案
   private async handleSubmit(): Promise<void> {
     if (this.loading) {
       return;
@@ -79,16 +49,23 @@ struct LoginPage {
     }
     this.errorMsg = '';
     this.loading = true;
-    const ok: boolean = this.mode === 0
-      ? await this.requestLogin(this.account.trim(), this.password)
-      : await this.requestRegister(this.account.trim(), this.password);
-    this.loading = false;
-    if (!ok) {
-      this.errorMsg = this.mode === 0 ? '登录失败，请检查账号密码' : '注册失败，请稍后重试';
+
+    const result: AuthResult = this.mode === 0
+      ? await Api.login(this.account.trim(), this.password)
+      : await Api.register(this.account.trim(), this.password);
+
+    if (!result.ok || result.data === null) {
+      this.loading = false;
+      this.errorMsg = result.message;
       return;
     }
-    // 模拟场景使用本地占位数据；接入真实接口后由后端返回 token/nickname/avatar
-    await this.store.login(`mock-token-${Date.now()}`, 'Yoji.学员', '');
+
+    const data: AuthData = result.data;
+    await this.store.login(data.token, data.nickname, data.avatar, data.userId);
+    // 登录后同步云端进度（新设备直接恢复，老设备做并集合并）
+    await CloudSync.bootstrap();
+    this.loading = false;
+
     // 若从“我的”页进入则返回原页面，否则（欢迎页进入）替换为首页
     if (Number(router.getLength()) > 1) {
       router.back();

@@ -1,6 +1,7 @@
 import { promptAction } from '@kit.ArkUI';
 import { router } from '@kit.ArkUI';
 import { Store } from '../store/Store';
+import { CloudSync } from '../common/CloudSync';
 import { Theme } from '../common/Theme';
 
 // ============================================================
@@ -64,7 +65,10 @@ const UPDATE_LOGS: UpdateLog[] = [
     items: [
       '新增“编辑资料”页面：头像、昵称、性别、生日一键修改',
       '全面优化视觉效果，更改为液态玻璃主题',
-      '视频新增收藏功能，且用户可以在视频里自行添加单词到单词本'
+      '视频新增收藏功能，且用户可以在视频里自行添加单词到单词本',
+      '接入云端账号登录与学习进度同步',
+      '新增退出登录、换账号数据隔离与云端清空',
+      '视频改为在线链接播放，安装包体积减小'
     ]
   }
 ];
@@ -79,6 +83,10 @@ struct AboutPage {
 
   private async clearData(): Promise<void> {
     await this.store.clearAll();
+    // 已登录时同步清空云端，避免下次登录又被合并回来
+    if (this.store.isLoggedIn) {
+      await CloudSync.resetRemote();
+    }
     promptAction.showToast({ message: '学习记录已清空' });
   }
 

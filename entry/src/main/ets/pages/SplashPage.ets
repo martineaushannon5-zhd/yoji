@@ -1,6 +1,7 @@
 import { common } from '@kit.AbilityKit';
 import { font, router } from '@kit.ArkUI';
 import { Store } from '../store/Store';
+import { CloudSync } from '../common/CloudSync';
 
 // 欢迎页：每次启动时展示，稍后按登录态进入登录页或首页
 @Entry
@@ -21,6 +22,14 @@ struct SplashPage {
     await this.store.init(ctx);
     // 恢复上次选择的主题（深色/浅色），供各页面 @StorageLink 读取
     AppStorage.setOrCreate('darkMode', this.store.darkMode);
+    // 学习进度每次落盘后触发防抖上云；Store 本身不感知网络
+    this.store.onSaved = (): void => {
+      CloudSync.schedulePush();
+    };
+    // 已登录：后台静默合并云端进度，完成后通过 AppStorage.syncTick 通知首页刷新
+    if (this.store.isLoggedIn) {
+      CloudSync.bootstrap();
+    }
     // 品牌文字淡入
     animateTo({ duration: 600, curve: Curve.EaseOut }, () => {
       this.fadeIn = 1;

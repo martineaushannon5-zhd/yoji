@@ -64,6 +64,14 @@ struct ProfileEditPage {
     });
   }
 
+  // 头像既可能是本地沙箱路径，也可能是后端返回的 http(s) URL
+  private avatarUri(): string {
+    if (this.avatar.startsWith('http://') || this.avatar.startsWith('https://') || this.avatar.startsWith('file://')) {
+      return this.avatar;
+    }
+    return `file://${this.avatar}`;
+  }
+
   // 保存资料：昵称非空校验后写回 Store
   private async save(): Promise<void> {
     if (this.saving) {
@@ -86,7 +94,7 @@ struct ProfileEditPage {
   AvatarPicker() {
     Stack() {
       if (this.avatar !== '') {
-        Image('file://' + this.avatar)
+        Image(this.avatarUri())
           .width(88)
           .height(88)
           .borderRadius(44)
