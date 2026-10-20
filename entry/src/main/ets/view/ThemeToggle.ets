@@ -42,8 +42,10 @@ export struct ThemeToggle {
     .height(40)
     .borderRadius(20)
     .justifyContent(FlexAlign.Center)
-    .backgroundColor(Theme.card(this.isDark))
-    .border({ width: 1, color: this.isDark ? Theme.line(this.isDark) : 'rgba(27, 30, 40, 0.06)' })
+    // 与底部导航栏一致的玻璃质感：半透明底 + 背景模糊 + 高光描边
+    .backgroundColor(Theme.glass(this.isDark))
+    .backgroundBlurStyle(BlurStyle.Thin)
+    .border({ width: 1, color: Theme.glassBorder(this.isDark) })
     .shadow({ radius: 10, color: 'rgba(27, 30, 40, 0.12)', offsetY: 3 })
     .onClick(() => {
       this.onToggle();

@@ -1,7 +1,6 @@
 import { router } from '@kit.ArkUI';
 import { BookListView } from '../view/BookListView';
 import { Theme } from '../common/Theme';
-import { ThemeToggle } from '../view/ThemeToggle';
 
 // 词库页面：由“我的-当前词书”或首页“切换”按钮进入
 @Entry
@@ -31,10 +30,7 @@ struct BookListPage {
           .fontSize(18)
           .fontWeight(FontWeight.Bold)
           .fontColor(Theme.ink(this.isDark))
-          .layoutWeight(1)
-          .textAlign(TextAlign.Center)
-        // 右上角月亮按钮：与标题行对齐，点击切换深色/浅色模式
-        ThemeToggle()
+          .margin({ left: 4 })
       }
       .width('100%')
       .padding({ left: 16, right: 16, top: 8, bottom: 4 })

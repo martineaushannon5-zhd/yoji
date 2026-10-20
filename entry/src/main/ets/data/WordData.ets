@@ -130,10 +130,20 @@ function makeBook(id: string, name: string, subtitle: string, words: Word[]): Wo
   return book;
 }
 
+// 自填词库：用户在看视频时手动添加的单词，words 由 Store 初始化时注入并持续同步
+// 注意：此对象必须导出，Store.init 会为其填充持久化数据
+export const CUSTOM_BOOK: WordBook = makeBook('custom', '自填词库', '视频学习时手动添加的单词', []);
+
 export const BOOKS: WordBook[] = [
   makeBook('cet4', '四级核心词', 'CET-4 · 60 词精选', CET4_WORDS),
   makeBook('cet6', '六级核心词', 'CET-6 · 40 词精选', CET6_WORDS),
 ];
+
+// 自填词库追加到 BOOKS 末尾，收藏页/单词列表页遍历 BOOKS 时自动可见
+BOOKS.push(CUSTOM_BOOK);
+
+// 词库列表页可选择的词库（不含自填词库：它只是视频单词笔记，不作为可选词库）
+export const SELECTABLE_BOOKS: WordBook[] = BOOKS.filter((b: WordBook): boolean => b.id !== 'custom');
 
 export function getBook(bookId: string): WordBook {
   for (const b of BOOKS) {

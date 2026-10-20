@@ -1,5 +1,5 @@
 import { router } from '@kit.ArkUI';
-import { BOOKS, getBook } from '../data/WordData';
+import { SELECTABLE_BOOKS } from '../data/WordData';
 import { Store } from '../store/Store';
 import { Theme } from '../common/Theme';
 import { STATUS_MASTERED, WordBook } from '../model/WordModel';
@@ -51,7 +51,7 @@ export struct BookListView {
 
       Scroll() {
         Column({ space: 14 }) {
-          ForEach(BOOKS, (book: WordBook) => {
+          ForEach(SELECTABLE_BOOKS, (book: WordBook) => {
             Column() {
               Row() {
                 Column() {
@@ -84,7 +84,7 @@ export struct BookListView {
               }
               .width('100%')
 
-              // 进度条
+              // 进度条（空词库时显示 0%，避免除零产生 NaN）
               Stack({ alignContent: Alignment.Start }) {
                 Row()
                   .width('100%')
@@ -92,7 +92,7 @@ export struct BookListView {
                   .borderRadius(3)
                   .backgroundColor(Theme.line(this.isDark))
                 Row()
-                  .width(`${Math.round(this.learnedCount(book) * 100 / book.words.length)}%`)
+                  .width(`${book.words.length > 0 ? Math.round(this.learnedCount(book) * 100 / book.words.length) : 0}%`)
                   .height(6)
                   .borderRadius(3)
                   .backgroundColor(Theme.accent(this.isDark))
@@ -108,7 +108,16 @@ export struct BookListView {
                 Button('开始学习')
                   .fontSize(13)
                   .type(ButtonType.Capsule)
-                  .backgroundColor(Theme.accent(this.isDark))
+                  .backgroundColor(Theme.accentGlassStrong(this.isDark))
+                  .backgroundBlurStyle(BlurStyle.Thin)
+                  .border({ width: 1, color: Theme.accentGlassBorder(this.isDark) })
+                  .fontColor(Theme.accent(this.isDark))
+                  .shadow({
+                    radius: 12,
+                    color: this.isDark ? 'rgba(123,147,255,0.35)' : 'rgba(61,90,241,0.30)',
+                    offsetX: 0,
+                    offsetY: 4
+                  })
                   .height(34)
                   .padding({ left: 16, right: 16 })
                   .onClick(() => {
@@ -118,10 +127,15 @@ export struct BookListView {
               .width('100%')
               .margin({ top: 12 })
             }
-            .backgroundColor(Theme.card(this.isDark))
+            // 与首页一致的玻璃质感：半透明底 + 背景模糊 + 高光描边 + 悬空阴影
+            .backgroundColor(Theme.glass(this.isDark))
+            .backgroundBlurStyle(BlurStyle.Thin)
+            .border({ width: 1, color: Theme.glassBorder(this.isDark) })
             .borderRadius(22)
+            .shadow({ radius: 14, color: 'rgba(27,30,40,0.12)', offsetX: 0, offsetY: 6 })
             .padding(20)
             .width('100%')
+            .clickEffect({ level: ClickEffectLevel.LIGHT })
             .onClick(() => {
               this.selectBook(book.id);
             })

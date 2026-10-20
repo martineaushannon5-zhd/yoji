@@ -233,7 +233,7 @@ struct LearnPage {
 
   private optionColor(opt: QuizOption, optionIdx: number, dark: boolean): string {
     if (this.selectedIdx < 0) {
-      return Theme.card(dark);
+      return Theme.glass(dark);
     }
     if (opt.isAnswer) {
       return Theme.successSoft(dark);
@@ -241,7 +241,7 @@ struct LearnPage {
     if (optionIdx === this.selectedIdx) {
       return Theme.dangerSoft(dark);
     }
-    return Theme.card(dark);
+    return Theme.glass(dark);
   }
 
   private optionTextColor(opt: QuizOption, optionIdx: number, dark: boolean): string {
@@ -343,8 +343,12 @@ struct LearnPage {
         }
         .width('100%')
         .height('100%')
-        .backgroundColor(Theme.card(this.isDark))
+        // 与首页一致的玻璃质感：半透明底 + 背景模糊 + 高光描边 + 悬空阴影
+        .backgroundColor(Theme.glass(this.isDark))
+        .backgroundBlurStyle(BlurStyle.Thin)
+        .border({ width: 1, color: Theme.glassBorder(this.isDark) })
         .borderRadius(28)
+        .shadow({ radius: 18, color: 'rgba(27,30,40,0.14)', offsetX: 0, offsetY: 8 })
         .padding(28)
         .onClick(() => {
           this.revealed = !this.revealed;
@@ -481,7 +485,16 @@ struct LearnPage {
         .fontSize(16)
         .fontWeight(FontWeight.Medium)
         .type(ButtonType.Capsule)
-        .backgroundColor(Theme.accent(this.isDark))
+        .backgroundColor(Theme.accentGlassStrong(this.isDark))
+        .backgroundBlurStyle(BlurStyle.Thin)
+        .border({ width: 1, color: Theme.accentGlassBorder(this.isDark) })
+        .fontColor(Theme.accent(this.isDark))
+        .shadow({
+          radius: 16,
+          color: this.isDark ? 'rgba(123,147,255,0.35)' : 'rgba(61,90,241,0.30)',
+          offsetX: 0,
+          offsetY: 6
+        })
         .height(52)
         .width('60%')
         .margin({ top: 40 })

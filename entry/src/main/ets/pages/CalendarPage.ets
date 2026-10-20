@@ -2,7 +2,6 @@ import { router } from '@kit.ArkUI';
 import { findWord } from '../data/WordData';
 import { Store } from '../store/Store';
 import { Theme } from '../common/Theme';
-import { ThemeToggle } from '../view/ThemeToggle';
 import { Word } from '../model/WordModel';
 
 // 日历格子：day 为 0 表示空白占位
@@ -232,8 +231,12 @@ struct CalendarPage {
         .margin({ top: 6 })
     }
     .alignItems(HorizontalAlign.Start)
-    .backgroundColor(Theme.card(this.isDark))
+    // 与首页一致的玻璃质感：半透明底 + 背景模糊 + 高光描边 + 悬空阴影
+    .backgroundColor(Theme.glass(this.isDark))
+    .backgroundBlurStyle(BlurStyle.Thin)
+    .border({ width: 1, color: Theme.glassBorder(this.isDark) })
     .borderRadius(16)
+    .shadow({ radius: 12, color: 'rgba(27,30,40,0.12)', offsetX: 0, offsetY: 6 })
     .padding(16)
     .width('100%')
     .margin({ top: 10 })
@@ -277,8 +280,8 @@ struct CalendarPage {
             .fontSize(18)
             .fontWeight(FontWeight.Bold)
             .fontColor(Color.White)
-            .layoutWeight(1)
-            .textAlign(TextAlign.Center)
+            .margin({ left: 4 })
+          Blank()
           Row({ space: 8 }) {
             Column() {
               SymbolGlyph($r('sys.symbol.chevron_left'))
@@ -288,7 +291,8 @@ struct CalendarPage {
             .width(32)
             .height(32)
             .borderRadius(16)
-            .backgroundColor(Theme.card(this.isDark))
+            .backgroundColor(Theme.glass(this.isDark))
+            .border({ width: 1, color: Theme.glassBorder(this.isDark) })
             .justifyContent(FlexAlign.Center)
             .onClick(() => {
               this.prevMonth();
@@ -301,13 +305,12 @@ struct CalendarPage {
             .width(32)
             .height(32)
             .borderRadius(16)
-            .backgroundColor(Theme.card(this.isDark))
+            .backgroundColor(Theme.glass(this.isDark))
+            .border({ width: 1, color: Theme.glassBorder(this.isDark) })
             .justifyContent(FlexAlign.Center)
             .onClick(() => {
               this.nextMonth();
             })
-            // 右上角月亮按钮：点击切换深色/浅色模式
-            ThemeToggle()
           }
         }
         .width('100%')
@@ -338,8 +341,11 @@ struct CalendarPage {
           .margin({ bottom: 10 })
         }
         .width('90%')
-        .backgroundColor(Theme.card(this.isDark))
-        .borderRadius(5)
+        // 玻璃日历卡：渐变背景上的半透明玻璃，模糊透出背景色
+        .backgroundColor(Theme.glass(this.isDark))
+        .backgroundBlurStyle(BlurStyle.Thin)
+        .border({ width: 1, color: Theme.glassBorder(this.isDark) })
+        .borderRadius(20)
         .shadow({ radius: 16, color: 'rgba(27, 30, 40, 0.1)', offsetY: 4 })
         .margin({ left: 24, right: 24, top: 16 })
 

@@ -6,6 +6,8 @@ export interface Word {
   meaning: string;
   example: string;
   exampleCn: string;
+  // 所属视频 id：用户在视频页手动添加的单词才有值，用于按视频展示
+  videoId?: string;
 }
 
 export interface WordBook {

@@ -1,6 +1,5 @@
 import { router } from '@kit.ArkUI';
 import { Theme } from '../common/Theme';
-import { ThemeToggle } from './ThemeToggle';
 import { VIDEO_LIST } from '../data/VideoData';
 import { VideoItem } from '../model/VideoModel';
 
@@ -13,9 +12,14 @@ export struct VideoListView {
   @StorageLink('darkMode') isDark: boolean = false;
   // 滚动位置回调：用于首页底部导航栏的收起/展开联动
   onScrollY: (y: number) => void = (y: number): void => {};
+  // 入场动画开关：首次进入或切回本 Tab 时触发淡入上浮
+  @State enter: boolean = false;
 
   aboutToAppear(): void {
     this.shown = VIDEO_LIST;
+    setTimeout(() => {
+      this.enter = true;
+    }, 80);
   }
 
   // 按标题关键字过滤视频
@@ -71,10 +75,15 @@ export struct VideoListView {
       .margin({ left: 12 })
     }
     .width('100%')
-    .backgroundColor(Theme.card(this.isDark))
+    // 与底部导航栏一致的玻璃质感：半透明底 + 背景模糊 + 高光描边 + 悬空阴影
+    .backgroundColor(Theme.glass(this.isDark))
+    .backgroundBlurStyle(BlurStyle.Thin)
+    .border({ width: 1, color: Theme.glassBorder(this.isDark) })
     .borderRadius(16)
+    .shadow({ radius: 12, color: 'rgba(27,30,40,0.12)', offsetX: 0, offsetY: 6 })
     .padding(12)
     .margin({ top: 12 })
+    .clickEffect({ level: ClickEffectLevel.LIGHT })
     .onClick(() => {
       router.pushUrl({ url: 'pages/VideoPlayPage', params: { id: item.id } });
     })
@@ -88,20 +97,23 @@ export struct VideoListView {
           .fontWeight(FontWeight.Bold)
           .fontColor(Theme.ink(this.isDark))
           .layoutWeight(1)
-        // 右上角月亮按钮：与左侧标题对齐，点击切换深色/浅色模式
-        ThemeToggle()
       }
       .width('100%')
       .padding({ left: 24, right: 24, top: 24, bottom: 8 })
+      .translate({ y: this.enter ? 0 : 24 })
+      .opacity(this.enter ? 1 : 0)
+      .animation({ duration: 450, curve: Curve.Friction })
 
-      // 搜索框
+      // 搜索框（液态玻璃胶囊）
       Row() {
         Search({ value: this.keyword, placeholder: '搜索视频' })
           .height(40)
           .layoutWeight(1)
           .fontColor(Theme.ink(this.isDark))
           .placeholderColor(Theme.inkTertiary(this.isDark))
-          .backgroundColor(Theme.card(this.isDark))
+          .backgroundColor(Theme.glass(this.isDark))
+          .backgroundBlurStyle(BlurStyle.Thin)
+          .border({ width: 1, color: Theme.glassBorder(this.isDark) })
           .borderRadius(20)
           .onChange((v: string) => {
             this.keyword = v;
@@ -113,6 +125,9 @@ export struct VideoListView {
       }
       .width('100%')
       .padding({ left: 24, right: 24 })
+      .translate({ y: this.enter ? 0 : 24 })
+      .opacity(this.enter ? 1 : 0)
+      .animation({ duration: 450, curve: Curve.Friction, delay: 90 })
 
       // 视频列表
       Scroll() {
@@ -142,6 +157,9 @@ export struct VideoListView {
       .layoutWeight(1)
       .scrollBar(BarState.Off)
       .align(Alignment.Top)
+      .translate({ y: this.enter ? 0 : 28 })
+      .opacity(this.enter ? 1 : 0)
+      .animation({ duration: 450, curve: Curve.Friction, delay: 180 })
       .onDidScroll((xOffset: number, yOffset: number, scrollState: ScrollState) => {
         this.onScrollY(yOffset);
       })

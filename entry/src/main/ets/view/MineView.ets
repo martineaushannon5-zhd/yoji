@@ -75,18 +75,26 @@ export struct MineView {
   @State bookName: string = '';
   @State isLoggedIn: boolean = false;
   @State nickname: string = '';
+  @State gender: string = '';
+  @State avatar: string = '';
   @State totalLearned: number = 0;
   @State learnedDays: number = 0;
   @State favCount: number = 0;
+  @State videoFavCount: number = 0;
   onMutate: () => void = (): void => {};
   // 滚动位置回调：用于首页底部导航栏的收起/展开联动
   onScrollY: (y: number) => void = (y: number): void => {};
+  // 入场动画开关：首次进入或切回本 Tab 时触发模块错峰上浮
+  @State enter: boolean = false;
 
   private store: Store = Store.get();
   private targetDialog: CustomDialogController | undefined = undefined;
 
   aboutToAppear(): void {
     this.syncFromStore();
+    setTimeout(() => {
+      this.enter = true;
+    }, 80);
     this.targetDialog = new CustomDialogController({
       builder: TargetInputDialog({
         onConfirm: (v: number): void => {
@@ -105,9 +113,12 @@ export struct MineView {
     this.bookName = getBook(this.store.currentBookId).name;
     this.isLoggedIn = this.store.isLoggedIn;
     this.nickname = this.store.nickname;
+    this.gender = this.store.gender;
+    this.avatar = this.store.avatar;
     this.totalLearned = this.store.totalLearned;
     this.learnedDays = this.store.learnedDays;
     this.favCount = Object.keys(this.store.favorites).length;
+    this.videoFavCount = Object.keys(this.store.favoriteVideos).length;
   }
 
   // 当前目标是否为自定义值（不在预设选项内）
@@ -125,25 +136,33 @@ export struct MineView {
   UserCard() {
     Column() {
       Row() {
-        // ⚠️【头像占位】接入后端后，若 this.store.avatar 非空，可改为：
-        //   Image(this.store.avatar).width(64).height(64).borderRadius(32)
-        Column() {
-          SymbolGlyph($r('sys.symbol.person'))
-            .fontSize(28)
-            .fontColor([Color.White])
+        // 头像：已上传头像时展示图片，否则展示占位图标（点击卡片进入编辑资料页更换）
+        if (this.isLoggedIn && this.avatar !== '') {
+          Image('file://' + this.avatar)
+            .width(64)
+            .height(64)
+            .borderRadius(32)
+            .objectFit(ImageFit.Cover)
+        } else {
+          Column() {
+            SymbolGlyph($r('sys.symbol.person'))
+              .fontSize(28)
+              .fontColor([Color.White])
+          }
+          .width(64)
+          .height(64)
+          .borderRadius(32)
+          .backgroundColor(this.isLoggedIn ? Theme.accent(this.isDark) : (this.isDark ? '#39404E' : '#B8C0CE'))
+          .justifyContent(FlexAlign.Center)
         }
-        .width(64)
-        .height(64)
-        .borderRadius(32)
-        .backgroundColor(this.isLoggedIn ? Theme.accent(this.isDark) : (this.isDark ? '#39404E' : '#B8C0CE'))
-        .justifyContent(FlexAlign.Center)
 
         Column() {
           Text(this.isLoggedIn ? this.nickname : '请先登录')
             .fontSize(19)
             .fontWeight(FontWeight.Bold)
             .fontColor(Theme.ink(this.isDark))
-          Text(this.isLoggedIn ? '已登录' : '登录后同步你的学习进度')
+          // 已登录时展示性别（未设置时提示完善资料），替代原“已登录”文案
+          Text(this.isLoggedIn ? (this.gender !== '' ? this.gender : '点击完善资料') : '登录后同步你的学习进度')
             .fontSize(12)
             .fontColor(Theme.inkSecondary(this.isDark))
             .margin({ top: 4 })
@@ -152,15 +171,16 @@ export struct MineView {
         .layoutWeight(1)
         .margin({ left: 14 })
 
-        if (!this.isLoggedIn) {
-          SymbolGlyph($r('sys.symbol.chevron_right'))
-            .fontSize(18)
-            .fontColor([Theme.inkSecondary(this.isDark)])
-        }
+        // 未登录跳登录页，已登录进编辑资料页，均展示右侧箭头提示可点击
+        SymbolGlyph($r('sys.symbol.chevron_right'))
+          .fontSize(18)
+          .fontColor([Theme.inkSecondary(this.isDark)])
       }
       .width('100%')
       .onClick(() => {
-        if (!this.isLoggedIn) {
+        if (this.isLoggedIn) {
+          router.pushUrl({ url: 'pages/ProfileEditPage' });
+        } else {
           this.goLogin();
         }
       })
@@ -242,10 +262,18 @@ export struct MineView {
       }
       .width('100%')
     }
-    .backgroundColor(Theme.card(this.isDark))
+    // 与首页一致的玻璃质感：半透明底 + 背景模糊 + 高光描边 + 悬空阴影
+    .backgroundColor(Theme.glass(this.isDark))
+    .backgroundBlurStyle(BlurStyle.Thin)
+    .border({ width: 1, color: Theme.glassBorder(this.isDark) })
     .borderRadius(18)
+    .shadow({ radius: 14, color: 'rgba(27,30,40,0.12)', offsetX: 0, offsetY: 6 })
     .padding(20)
     .width('100%')
+    .clickEffect({ level: ClickEffectLevel.LIGHT })
+    .translate({ y: this.enter ? 0 : 32 })
+    .opacity(this.enter ? 1 : 0)
+    .animation({ duration: 480, curve: Curve.Friction, delay: 0 })
   }
 
   build() {
@@ -282,10 +310,18 @@ export struct MineView {
               .fontColor([Theme.inkTertiary(this.isDark)])
           }
           .width('100%')
-          .backgroundColor(Theme.card(this.isDark))
+          // 玻璃质感：半透明底 + 背景模糊 + 高光描边 + 悬空阴影
+          .backgroundColor(Theme.glass(this.isDark))
+          .backgroundBlurStyle(BlurStyle.Thin)
+          .border({ width: 1, color: Theme.glassBorder(this.isDark) })
           .borderRadius(18)
+          .shadow({ radius: 12, color: 'rgba(27,30,40,0.12)', offsetX: 0, offsetY: 6 })
           .padding(20)
           .margin({ top: 14 })
+          .clickEffect({ level: ClickEffectLevel.LIGHT })
+          .translate({ y: this.enter ? 0 : 28 })
+          .opacity(this.enter ? 1 : 0)
+          .animation({ duration: 480, curve: Curve.Friction, delay: 70 })
           .onClick(() => {
             router.pushUrl({ url: 'pages/CalendarPage' });
           })
@@ -309,12 +345,55 @@ export struct MineView {
               .margin({ left: 6 })
           }
           .width('100%')
-          .backgroundColor(Theme.card(this.isDark))
+          // 玻璃质感：半透明底 + 背景模糊 + 高光描边 + 悬空阴影
+          .backgroundColor(Theme.glass(this.isDark))
+          .backgroundBlurStyle(BlurStyle.Thin)
+          .border({ width: 1, color: Theme.glassBorder(this.isDark) })
           .borderRadius(18)
+          .shadow({ radius: 12, color: 'rgba(27,30,40,0.12)', offsetX: 0, offsetY: 6 })
           .padding(20)
           .margin({ top: 14 })
+          .clickEffect({ level: ClickEffectLevel.LIGHT })
+          .translate({ y: this.enter ? 0 : 28 })
+          .opacity(this.enter ? 1 : 0)
+          .animation({ duration: 480, curve: Curve.Friction, delay: 140 })
           .onClick(() => {
             router.pushUrl({ url: 'pages/FavoritePage' });
+          })
+
+          // 喜欢的视频入口：查看收藏的视频
+          Row() {
+            SymbolGlyph($r('sys.symbol.heart'))
+              .fontSize(20)
+              .fontColor([Theme.accent(this.isDark)])
+            Text('喜欢的视频')
+              .fontSize(15)
+              .fontColor(Theme.ink(this.isDark))
+              .layoutWeight(1)
+              .margin({ left: 12 })
+            Text(`已收藏 ${this.videoFavCount}个视频`)
+              .fontSize(15)
+              .fontColor(Theme.inkSecondary(this.isDark))
+            SymbolGlyph($r('sys.symbol.chevron_right'))
+              .fontSize(14)
+              .fontColor([Theme.inkTertiary(this.isDark)])
+              .margin({ left: 6 })
+          }
+          .width('100%')
+          // 玻璃质感：半透明底 + 背景模糊 + 高光描边 + 悬空阴影
+          .backgroundColor(Theme.glass(this.isDark))
+          .backgroundBlurStyle(BlurStyle.Thin)
+          .border({ width: 1, color: Theme.glassBorder(this.isDark) })
+          .borderRadius(18)
+          .shadow({ radius: 12, color: 'rgba(27,30,40,0.12)', offsetX: 0, offsetY: 6 })
+          .padding(20)
+          .margin({ top: 14 })
+          .clickEffect({ level: ClickEffectLevel.LIGHT })
+          .translate({ y: this.enter ? 0 : 28 })
+          .opacity(this.enter ? 1 : 0)
+          .animation({ duration: 480, curve: Curve.Friction, delay: 210 })
+          .onClick(() => {
+            router.pushUrl({ url: 'pages/FavoriteVideoPage' });
           })
 
           // 当前词书：点击进入词库
@@ -336,10 +415,18 @@ export struct MineView {
               .margin({ left: 6 })
           }
           .width('100%')
-          .backgroundColor(Theme.card(this.isDark))
+          // 玻璃质感：半透明底 + 背景模糊 + 高光描边 + 悬空阴影
+          .backgroundColor(Theme.glass(this.isDark))
+          .backgroundBlurStyle(BlurStyle.Thin)
+          .border({ width: 1, color: Theme.glassBorder(this.isDark) })
           .borderRadius(18)
+          .shadow({ radius: 12, color: 'rgba(27,30,40,0.12)', offsetX: 0, offsetY: 6 })
           .padding(20)
           .margin({ top: 14 })
+          .clickEffect({ level: ClickEffectLevel.LIGHT })
+          .translate({ y: this.enter ? 0 : 28 })
+          .opacity(this.enter ? 1 : 0)
+          .animation({ duration: 480, curve: Curve.Friction, delay: 280 })
           .onClick(() => {
             router.pushUrl({ url: 'pages/BookListPage' });
           })
@@ -361,7 +448,7 @@ export struct MineView {
                 Text(`${n}`)
                   .fontSize(14)
                   .fontColor(this.target === n ? Color.White : Theme.inkSecondary(this.isDark))
-                  .backgroundColor(this.target === n ? Theme.accent(this.isDark) : Theme.bg(this.isDark))
+                  .backgroundColor(this.target === n ? Theme.accent(this.isDark) : Theme.glass(this.isDark))
                   .borderRadius(12)
                   .textAlign(TextAlign.Center)
                   .height(36)
@@ -396,11 +483,18 @@ export struct MineView {
               }
             })
           }
-          .backgroundColor(Theme.card(this.isDark))
+          // 玻璃质感：半透明底 + 背景模糊 + 高光描边 + 悬空阴影
+          .backgroundColor(Theme.glass(this.isDark))
+          .backgroundBlurStyle(BlurStyle.Thin)
+          .border({ width: 1, color: Theme.glassBorder(this.isDark) })
           .borderRadius(18)
+          .shadow({ radius: 12, color: 'rgba(27,30,40,0.12)', offsetX: 0, offsetY: 6 })
           .padding(20)
           .width('100%')
           .margin({ top: 14 })
+          .translate({ y: this.enter ? 0 : 28 })
+          .opacity(this.enter ? 1 : 0)
+          .animation({ duration: 480, curve: Curve.Friction, delay: 350 })
 
           // 关于与数据入口
           Row() {
@@ -417,10 +511,18 @@ export struct MineView {
               .fontColor([Theme.inkTertiary(this.isDark)])
           }
           .width('100%')
-          .backgroundColor(Theme.card(this.isDark))
+          // 玻璃质感：半透明底 + 背景模糊 + 高光描边 + 悬空阴影
+          .backgroundColor(Theme.glass(this.isDark))
+          .backgroundBlurStyle(BlurStyle.Thin)
+          .border({ width: 1, color: Theme.glassBorder(this.isDark) })
           .borderRadius(18)
+          .shadow({ radius: 12, color: 'rgba(27,30,40,0.12)', offsetX: 0, offsetY: 6 })
           .padding(20)
           .margin({ top: 14, bottom: 104 })
+          .clickEffect({ level: ClickEffectLevel.LIGHT })
+          .translate({ y: this.enter ? 0 : 28 })
+          .opacity(this.enter ? 1 : 0)
+          .animation({ duration: 480, curve: Curve.Friction, delay: 420 })
           .onClick(() => {
             router.pushUrl({ url: 'pages/AboutPage' });
           })

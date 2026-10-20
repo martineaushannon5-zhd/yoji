@@ -85,6 +85,36 @@ export class Theme {
     return dark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(255, 255, 255, 0.70)';
   }
 
+  // 液态玻璃彩色变体：首页卡片与按钮保持各自语义色的玻璃质感
+  static accentGlass(dark: boolean): string {
+    return dark ? 'rgba(123, 147, 255, 0.18)' : 'rgba(61, 90, 241, 0.12)';
+  }
+
+  static accentGlassBorder(dark: boolean): string {
+    return dark ? 'rgba(123, 147, 255, 0.40)' : 'rgba(61, 90, 241, 0.32)';
+  }
+
+  // 主按钮玻璃底：比 accentGlass 更浓，突出“开始学习”主入口
+  static accentGlassStrong(dark: boolean): string {
+    return dark ? 'rgba(123, 147, 255, 0.28)' : 'rgba(61, 90, 241, 0.20)';
+  }
+
+  static successGlass(dark: boolean): string {
+    return dark ? 'rgba(74, 222, 128, 0.14)' : 'rgba(22, 163, 74, 0.10)';
+  }
+
+  static successGlassBorder(dark: boolean): string {
+    return dark ? 'rgba(74, 222, 128, 0.34)' : 'rgba(22, 163, 74, 0.26)';
+  }
+
+  static warningGlass(dark: boolean): string {
+    return dark ? 'rgba(251, 191, 36, 0.14)' : 'rgba(245, 158, 11, 0.10)';
+  }
+
+  static warningGlassBorder(dark: boolean): string {
+    return dark ? 'rgba(251, 191, 36, 0.34)' : 'rgba(245, 158, 11, 0.26)';
+  }
+
   // 大块纯色背景（日历、视频播放页下半部分）：浅色为纯白，深色与页面背景一致
   static surface(dark: boolean): string {
     return dark ? '#16181D' : '#FFFFFF';

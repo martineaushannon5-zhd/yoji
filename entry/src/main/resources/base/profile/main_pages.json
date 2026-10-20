@@ -9,6 +9,8 @@
     "pages/CalendarPage",
     "pages/AboutPage",
     "pages/BookListPage",
-    "pages/VideoPlayPage"
+    "pages/VideoPlayPage",
+    "pages/FavoriteVideoPage",
+    "pages/ProfileEditPage"
   ]
 }

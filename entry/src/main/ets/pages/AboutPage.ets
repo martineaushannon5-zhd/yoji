@@ -2,7 +2,6 @@ import { promptAction } from '@kit.ArkUI';
 import { router } from '@kit.ArkUI';
 import { Store } from '../store/Store';
 import { Theme } from '../common/Theme';
-import { ThemeToggle } from '../view/ThemeToggle';
 
 // ============================================================
 // ⚠️【版本更新内容编辑区】
@@ -57,6 +56,15 @@ const UPDATE_LOGS: UpdateLog[] = [
       '新增深色模式：各页面右上角月亮按钮一键切换',
       '优化了底部导航栏的样式',
       '全新操作逻辑：学单词时左右滑即可进行标记'
+    ]
+  },
+  {
+    version: 'v1.2.0',
+    date: '2026-10-20',
+    items: [
+      '新增“编辑资料”页面：头像、昵称、性别、生日一键修改',
+      '全面优化视觉效果，更改为液态玻璃主题',
+      '视频新增收藏功能，且用户可以在视频里自行添加单词到单词本'
     ]
   }
 ];
@@ -123,8 +131,12 @@ struct AboutPage {
       }, (item: string, idx: number) => `${log.version}-${idx}`)
     }
     .alignItems(HorizontalAlign.Start)
-    .backgroundColor(Theme.card(this.isDark))
+    // 与首页一致的玻璃质感：半透明底 + 背景模糊 + 高光描边 + 悬空阴影
+    .backgroundColor(Theme.glass(this.isDark))
+    .backgroundBlurStyle(BlurStyle.Thin)
+    .border({ width: 1, color: Theme.glassBorder(this.isDark) })
     .borderRadius(18)
+    .shadow({ radius: 12, color: 'rgba(27,30,40,0.12)', offsetX: 0, offsetY: 6 })
     .padding(20)
     .width('100%')
     .margin({ top: 12 })
@@ -150,10 +162,7 @@ struct AboutPage {
           .fontSize(18)
           .fontWeight(FontWeight.Bold)
           .fontColor(Theme.ink(this.isDark))
-          .layoutWeight(1)
-          .textAlign(TextAlign.Center)
-        // 右上角月亮按钮：与标题行对齐，点击切换深色/浅色模式
-        ThemeToggle()
+          .margin({ left: 4 })
       }
       .width('100%')
       .padding({ left: 16, right: 16, top: 8, bottom: 4 })
@@ -176,13 +185,16 @@ struct AboutPage {
               .fontWeight(FontWeight.Bold)
               .fontColor(Theme.ink(this.isDark))
               .margin({ top: 12 })
-            Text('v1.1.0')
+            Text('v1.2.0')
               .fontSize(13)
               .fontColor(Theme.inkSecondary(this.isDark))
               .margin({ top: 4 })
           }
-          .backgroundColor(Theme.card(this.isDark))
+          .backgroundColor(Theme.glass(this.isDark))
+          .backgroundBlurStyle(BlurStyle.Thin)
+          .border({ width: 1, color: Theme.glassBorder(this.isDark) })
           .borderRadius(24)
+          .shadow({ radius: 14, color: 'rgba(27,30,40,0.12)', offsetX: 0, offsetY: 6 })
           .padding(24)
           .width('100%')
           .margin({ top: 12 })
@@ -214,8 +226,11 @@ struct AboutPage {
                 this.confirmClear();
               })
           }
-          .backgroundColor(Theme.card(this.isDark))
+          .backgroundColor(Theme.glass(this.isDark))
+          .backgroundBlurStyle(BlurStyle.Thin)
+          .border({ width: 1, color: Theme.glassBorder(this.isDark) })
           .borderRadius(18)
+          .shadow({ radius: 12, color: 'rgba(27,30,40,0.12)', offsetX: 0, offsetY: 6 })
           .padding(20)
           .width('100%')
           .margin({ top: 24, bottom: 24 })

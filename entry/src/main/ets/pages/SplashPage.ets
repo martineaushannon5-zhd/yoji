@@ -58,7 +58,7 @@ struct SplashPage {
       .justifyContent(FlexAlign.Center)
 
       Blank()
-      Text('v1.1.0')
+      Text('v1.2.0')
         .fontSize(12)
         .fontColor('rgba(255, 255, 255, 0.5)')
         .margin({ bottom: 40 })

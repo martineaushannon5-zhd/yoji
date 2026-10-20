@@ -1,12 +1,24 @@
-import { router, window } from '@kit.ArkUI';
+import { promptAction, router, window } from '@kit.ArkUI';
 import { Theme } from '../common/Theme';
-import { ThemeToggle } from '../view/ThemeToggle';
 import { findVideo } from '../data/VideoData';
 import { VideoItem } from '../model/VideoModel';
+import { Word } from '../model/WordModel';
 import { Store } from '../store/Store';
 
 // 倍速档位：循环切换
 const RATES: number[] = [0.75, 1.0, 1.25, 1.5, 2.0];
+
+// 爱心红色：收藏态图标色（浅色与深色下均可辨识）
+const HEART_RED: string = '#FF5A76';
+
+// 词性选项（展示文案），与 POS_SHORT 同索引对应
+const POS_OPTIONS: string[] = [
+  'n. 名词', 'v. 动词', 'adj. 形容词', 'adv. 副词', 'pron. 代词',
+  'prep. 介词', 'conj. 连词', 'int. 感叹词', 'num. 数词', 'art. 冠词'
+];
+
+// 词性缩写（写入释义，如 "v. 放弃"，与列表页释义拆分格式一致）
+const POS_SHORT: string[] = ['n.', 'v.', 'adj.', 'adv.', 'pron.', 'prep.', 'conj.', 'int.', 'num.', 'art.'];
 
 // 秒 -> "mm:ss"（超过 1 小时显示 "h:mm:ss"）
 function formatTime(t: number): string {
@@ -19,6 +31,45 @@ function formatTime(t: number): string {
     return `${h}:${pad(m)}:${pad(s)}`;
   }
   return `${pad(m)}:${pad(s)}`;
+}
+
+// 本视频添加单词的展示项：预先拆好词性与释义（与单词本页样式一致）
+interface MyWordItem {
+  word: Word;
+  pos: string;
+  meaning: string;
+}
+
+interface MeaningPart {
+  pos: string;
+  text: string;
+}
+
+// 拆分释义中的词性与释义，如 "v. 放弃，抛弃" -> "v." + "放弃，抛弃"
+function splitMeaning(raw: string): MeaningPart {
+  let i = 0;
+  let lastDot = -1;
+  while (i < raw.length) {
+    const ch = raw.charAt(i);
+    const isLetter = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
+    if (isLetter || ch === '.' || ch === '/') {
+      if (ch === '.') {
+        lastDot = i;
+      }
+      i += 1;
+    } else {
+      break;
+    }
+  }
+  if (lastDot > 0) {
+    const part: MeaningPart = {
+      pos: raw.substring(0, lastDot + 1),
+      text: raw.substring(i).trim()
+    };
+    return part;
+  }
+  const fallback: MeaningPart = { pos: '', text: raw };
+  return fallback;
 }
 
 // 视频播放页：自定义控制栏 + 手势快进快退 + 倍速 + 自绘全屏 + 记住进度
@@ -44,13 +95,34 @@ struct VideoPlayPage {
   @State seekHint: string = '';
   // 视频加载失败时的错误提示（用于排查播放问题）
   @State loadError: string = '';
+  // 是否已收藏当前视频（爱心按钮状态）
+  @State isFav: boolean = false;
+  // 爱心弹跳动效缩放比（keyframe 动画驱动）
+  @State heartScale: number = 1;
+  // "+"悬浮按钮弹跳动效缩放比（keyframe 动画驱动）
+  @State fabScale: number = 1;
   // 深色模式开关：双向绑定 AppStorage，切换后页面配色同步刷新
   @StorageLink('darkMode') isDark: boolean = false;
+  // 添加单词面板：是否展开
+  @State showAddPanel: boolean = false;
+  // 添加单词表单：单词 / 中文意思 / 音标 / 词性选中索引（-1 未选）
+  @State wordInput: string = '';
+  @State meaningInput: string = '';
+  @State phoneticInput: string = '';
+  @State posIndex: number = -1;
+  // 当前视频下用户手动添加的单词（页面下方展示）
+  @State myWords: MyWordItem[] = [];
+  // 笔记编辑模式：开启后每个单词行右侧显示删除按钮
+  @State editing: boolean = false;
 
   aboutToAppear(): void {
     const params = router.getParams() as Record<string, string>;
     if (params) {
       this.video = findVideo(params['id']);
+    }
+    if (this.video) {
+      this.isFav = this.store.isVideoFavorite(this.video.id);
+      this.refreshMyWords();
     }
     // 不修改状态栏颜色，保持系统默认，避免影响其他页面显示
   }
@@ -137,6 +209,182 @@ struct VideoPlayPage {
       return `${parts[0]}年${Number(parts[1])}月${Number(parts[2])}日`;
     }
     return date;
+  }
+
+  // 切换收藏状态并播放爱心弹跳动效
+  private async toggleFavorite(): Promise<void> {
+    if (!this.video) {
+      return;
+    }
+    this.isFav = await this.store.toggleVideoFavorite(this.video.id);
+    this.playHeartAnim();
+  }
+
+  // 爱心弹跳动效：先缩小再放大回弹，模拟"怦然心动"
+  // keyframeAnimateTo 每个关键帧用 duration + event 闭包描述（本 SDK 无 offset/value 形式）
+  private playHeartAnim(): void {
+    this.getUIContext().keyframeAnimateTo({
+      iterations: 1
+    }, [
+      {
+        duration: 90,
+        curve: Curve.EaseIn,
+        event: () => {
+          this.heartScale = 0.4;
+        }
+      },
+      {
+        duration: 160,
+        curve: Curve.EaseOut,
+        event: () => {
+          this.heartScale = 1.3;
+        }
+      },
+      {
+        duration: 120,
+        curve: Curve.EaseIn,
+        event: () => {
+          this.heartScale = 0.85;
+        }
+      },
+      {
+        duration: 80,
+        curve: Curve.EaseOut,
+        event: () => {
+          this.heartScale = 1.0;
+        }
+      }
+    ]);
+  }
+
+  // "+"按钮点击弹跳动效：按下缩小再回弹放大，最后复位（与爱心弹跳同款）
+  private playFabAnim(): void {
+    this.getUIContext().keyframeAnimateTo({
+      iterations: 1
+    }, [
+      {
+        duration: 90,
+        curve: Curve.EaseIn,
+        event: () => {
+          this.fabScale = 0.78;
+        }
+      },
+      {
+        duration: 150,
+        curve: Curve.EaseOut,
+        event: () => {
+          this.fabScale = 1.15;
+        }
+      },
+      {
+        duration: 110,
+        curve: Curve.EaseIn,
+        event: () => {
+          this.fabScale = 0.94;
+        }
+      },
+      {
+        duration: 70,
+        curve: Curve.EaseOut,
+        event: () => {
+          this.fabScale = 1.0;
+        }
+      }
+    ]);
+  }
+
+  // 打开添加单词面板：暂停视频，方便用户对照画面查看字幕填写
+  private openAddPanel(): void {
+    this.controller.pause();
+    this.showControls = true;
+    if (this.hideTimer >= 0) {
+      clearTimeout(this.hideTimer);
+      this.hideTimer = -1;
+    }
+    this.showAddPanel = true;
+  }
+
+  // 关闭添加单词面板（视频保持暂停，由用户手动继续播放）
+  private closeAddPanel(): void {
+    this.showAddPanel = false;
+  }
+
+  // 校验并保存自定义单词到自填词库（单词/词性/中文意思必填，音标选填）
+  private async saveCustomWord(): Promise<void> {
+    if (!this.video) {
+      return;
+    }
+    const word = this.wordInput.trim();
+    const meaning = this.meaningInput.trim();
+    const phonetic = this.phoneticInput.trim();
+    if (word === '') {
+      promptAction.showToast({ message: '请填写单词' });
+      return;
+    }
+    if (this.posIndex < 0) {
+      promptAction.showToast({ message: '请选择词性' });
+      return;
+    }
+    if (meaning === '') {
+      promptAction.showToast({ message: '请填写中文意思' });
+      return;
+    }
+    await this.store.addCustomWord(word, phonetic, POS_SHORT[this.posIndex], meaning, this.video.id);
+    promptAction.showToast({ message: `已记下 ${word}` });
+    // 刷新页面下方本视频单词列表
+    this.refreshMyWords();
+    // 清空表单并收起面板
+    this.wordInput = '';
+    this.meaningInput = '';
+    this.phoneticInput = '';
+    this.posIndex = -1;
+    this.showAddPanel = false;
+  }
+
+  // 重新加载当前视频下用户添加的单词（进入页面与保存后调用）
+  private refreshMyWords(): void {
+    if (!this.video) {
+      this.myWords = [];
+      return;
+    }
+    const words = this.store.customWordsOf(this.video.id);
+    const list: MyWordItem[] = [];
+    for (let i = 0; i < words.length; i++) {
+      const part = splitMeaning(words[i].meaning);
+      const item: MyWordItem = {
+        word: words[i],
+        pos: part.pos,
+        meaning: part.text
+      };
+      list.push(item);
+    }
+    this.myWords = list;
+  }
+
+  // 删除前二次确认：用户确认后才真正移除单词
+  private confirmDelete(item: MyWordItem): void {
+    promptAction.showDialog({
+      title: '删除单词',
+      message: `确定要删除 "${item.word.word}" 吗？删除后将从单词本中同步移除。`,
+      buttons: [
+        { text: '取消', color: Theme.inkSecondary(this.isDark) },
+        { text: '删除', color: Theme.danger(this.isDark) }
+      ]
+    }).then((res) => {
+      if (res.index === 1) {
+        this.doDelete(item);
+      }
+    });
+  }
+
+  // 执行删除并刷新列表（删空后自动退出编辑模式）
+  private async doDelete(item: MyWordItem): Promise<void> {
+    await this.store.deleteCustomWord(item.word.id);
+    this.refreshMyWords();
+    if (this.myWords.length === 0) {
+      this.editing = false;
+    }
+    promptAction.showToast({ message: '已删除' });
   }
 
   // 播放器主体：视频 + 手势层 + 遮罩 + 中央按钮 + 控制栏（全屏与非全屏共用）
@@ -346,6 +594,143 @@ struct VideoPlayPage {
     .height('100%')
   }
 
+  // 添加单词面板：从底部弹出半屏表单（条件渲染 + transition 滑入滑出动画）
+  @Builder
+  AddWordPanel() {
+    Stack({ alignContent: Alignment.Bottom }) {
+      // 半透明遮罩：淡入淡出，点击关闭面板
+      Column()
+        .width('100%')
+        .height('100%')
+        .backgroundColor('rgba(0, 0, 0, 0.45)')
+        .transition(TransitionEffect.OPACITY.animation({ duration: 240, curve: Curve.EaseOut }))
+        .onClick(() => {
+          this.closeAddPanel();
+        })
+
+      // 面板主体：占据屏幕下半部分
+      Column() {
+        // 顶部小横条：仿系统面板拖拽指示
+        Row()
+          .width(40)
+          .height(4)
+          .borderRadius(2)
+          .backgroundColor(Theme.line(this.isDark))
+
+        Row() {
+          Text('添加单词')
+            .fontSize(17)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(Theme.ink(this.isDark))
+          Blank()
+          Text('视频单词笔记')
+            .fontSize(11)
+            .fontColor(Theme.accent(this.isDark))
+            .backgroundColor(Theme.accentSoft(this.isDark))
+            .borderRadius(10)
+            .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+        }
+        .width('100%')
+        .margin({ top: 14 })
+
+        // 单词输入（必填）
+        TextInput({ text: this.wordInput, placeholder: '请输入英文单词（必填）' })
+          .height(46)
+          .fontSize(15)
+          .fontColor(Theme.ink(this.isDark))
+          .placeholderColor(Theme.inkTertiary(this.isDark))
+          .backgroundColor(Theme.bg(this.isDark))
+          .borderRadius(12)
+          .margin({ top: 16 })
+          .onChange((value: string) => {
+            this.wordInput = value;
+          })
+
+        // 词性选择（必填）：横向滚动选项，选中高亮
+        Scroll() {
+          Row({ space: 8 }) {
+            ForEach(POS_OPTIONS, (opt: string, i: number) => {
+              Text(opt)
+                .fontSize(13)
+                .fontWeight(this.posIndex === i ? FontWeight.Medium : FontWeight.Normal)
+                .fontColor(this.posIndex === i ? Theme.accent(this.isDark) : Theme.inkSecondary(this.isDark))
+                .backgroundColor(this.posIndex === i ? Theme.accentSoft(this.isDark) : Theme.glass(this.isDark))
+                .border({ width: 1, color: this.posIndex === i ? Theme.accent(this.isDark) : Theme.line(this.isDark), radius: 15 })
+                .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+                .onClick(() => {
+                  this.posIndex = i;
+                })
+            }, (opt: string) => opt)
+          }
+        }
+        .scrollable(ScrollDirection.Horizontal)
+        .scrollBar(BarState.Off)
+        .width('100%')
+        .margin({ top: 14 })
+
+        // 中文意思输入（必填）
+        TextInput({ text: this.meaningInput, placeholder: '请输入中文意思（必填）' })
+          .height(46)
+          .fontSize(15)
+          .fontColor(Theme.ink(this.isDark))
+          .placeholderColor(Theme.inkTertiary(this.isDark))
+          .backgroundColor(Theme.bg(this.isDark))
+          .borderRadius(12)
+          .margin({ top: 14 })
+          .onChange((value: string) => {
+            this.meaningInput = value;
+          })
+
+        // 音标输入（选填）
+        TextInput({ text: this.phoneticInput, placeholder: '请输入音标（选填）' })
+          .height(46)
+          .fontSize(15)
+          .fontColor(Theme.ink(this.isDark))
+          .placeholderColor(Theme.inkTertiary(this.isDark))
+          .backgroundColor(Theme.bg(this.isDark))
+          .borderRadius(12)
+          .margin({ top: 14 })
+          .onChange((value: string) => {
+            this.phoneticInput = value;
+          })
+
+        Blank()
+
+        // 底部按钮：取消 + 保存
+        Row({ space: 12 }) {
+          Button('取消')
+            .layoutWeight(1)
+            .height(44)
+            .fontSize(15)
+            .backgroundColor(Theme.glass(this.isDark))
+            .border({ width: 1, color: Theme.glassBorder(this.isDark) })
+            .fontColor(Theme.inkSecondary(this.isDark))
+            .onClick(() => {
+              this.closeAddPanel();
+            })
+          Button('保存')
+            .layoutWeight(1)
+            .height(44)
+            .fontSize(15)
+            .backgroundColor(Theme.accent(this.isDark))
+            .fontColor(Color.White)
+            .onClick(() => {
+              this.saveCustomWord();
+            })
+        }
+        .width('100%')
+      }
+      .width('100%')
+      .height('50%')
+      .padding({ left: 24, right: 24, top: 12, bottom: 24 })
+      .backgroundColor(Theme.surface(this.isDark))
+      .borderRadius({ topLeft: 20, topRight: 20 })
+      .transition(TransitionEffect.translate({ y: '100%' }).animation({ duration: 280, curve: Curve.EaseOut }))
+    }
+    .width('100%')
+    .height('100%')
+  }
+
   build() {
     Stack() {
       // 背景层：全屏时黑色铺满；非全屏时与学习日历一致（顶部三分之一渐变 + 下方三分之二纯白，深色下为深灰）
@@ -400,10 +785,7 @@ struct VideoPlayPage {
               .fontSize(18)
               .fontWeight(FontWeight.Bold)
               .fontColor(Color.White)
-              .layoutWeight(1)
-              .textAlign(TextAlign.Center)
-            // 右上角月亮按钮：与标题行对齐，点击切换深色/浅色模式
-            ThemeToggle()
+              .margin({ left: 4 })
           }
           .width('100%')
           .padding({ left: 16, right: 16, top: 8, bottom: 4 })
@@ -417,33 +799,155 @@ struct VideoPlayPage {
                 }
                 .width('100%')
                 .aspectRatio(16 / 9)
-                .borderRadius(16)
+                .borderRadius(5)
                 .clip(true)
 
                 // 视频信息卡
                 Column() {
-                  Text(this.video.title)
-                    .fontSize(17)
-                    .fontWeight(FontWeight.Bold)
-                    .fontColor(Theme.ink(this.isDark))
-                    .width('100%')
-                  Text(`上传于 ${this.dateLabel(this.video.date)}`)
-                    .fontSize(13)
-                    .fontColor(Theme.inkSecondary(this.isDark))
-                    .width('100%')
-                    .margin({ top: 8 })
-                  Divider()
-                    .strokeWidth(1)
-                    .color(Theme.line(this.isDark))
-                    .margin({ top: 14, bottom: 14 })
-                  Text('播放页粗略版本，后续将补充更多功能')
-                    .fontSize(12)
-                    .fontColor(Theme.inkTertiary(this.isDark))
-                    .width('100%')
+                  Row() {
+                    Column() {
+                      Text(this.video.title)
+                        .fontSize(17)
+                        .fontWeight(FontWeight.Bold)
+                        .fontColor(Theme.ink(this.isDark))
+                        .width('100%')
+                      Text(`上传于 ${this.dateLabel(this.video.date)}`)
+                        .fontSize(13)
+                        .fontColor(Theme.inkSecondary(this.isDark))
+                        .width('100%')
+                        .margin({ top: 8 })
+                    }
+                    .alignItems(HorizontalAlign.Start)
+                    .layoutWeight(1)
+
+                    // 收藏按钮：爱心图案 + 点击弹跳动效（padding 扩大点击热区）
+                    SymbolGlyph(this.isFav ? $r('sys.symbol.heart_fill') : $r('sys.symbol.heart'))
+                      .fontSize(26)
+                      .fontColor([this.isFav ? HEART_RED : Theme.inkTertiary(this.isDark)])
+                      .scale({ x: this.heartScale, y: this.heartScale })
+                      .padding(4)
+                      .margin({ left: 10 })
+                      .onClick(() => {
+                        this.toggleFavorite();
+                      })
+                  }
+                  .width('100%')
+                  .alignItems(VerticalAlign.Center)
                 }
                 .alignItems(HorizontalAlign.Start)
-                .backgroundColor(Theme.card(this.isDark))
+                // 与首页一致的玻璃质感：半透明底 + 背景模糊 + 高光描边 + 悬空阴影
+                .backgroundColor(Theme.glass(this.isDark))
+                .backgroundBlurStyle(BlurStyle.Thin)
+                .border({ width: 1, color: Theme.glassBorder(this.isDark) })
                 .borderRadius(16)
+                .shadow({ radius: 12, color: 'rgba(27,30,40,0.12)', offsetX: 0, offsetY: 6 })
+                .padding(16)
+                .width('100%')
+                .margin({ top: 16 })
+
+                // 本视频添加的单词：仅展示在当前视频下添加的单词
+                Column() {
+                  Row() {
+                    Text('本视频添加的单词')
+                      .fontSize(16)
+                      .fontWeight(FontWeight.Bold)
+                      .fontColor(Theme.ink(this.isDark))
+                    Blank()
+                    if (this.myWords.length > 0) {
+                      Text(`${this.myWords.length} 个`)
+                        .fontSize(12)
+                        .fontColor(Theme.inkTertiary(this.isDark))
+                    }
+                    // 编辑 / 完成按钮：有单词时显示，切换删除模式
+                    if (this.myWords.length > 0) {
+                      Text(this.editing ? '完成' : '编辑')
+                        .fontSize(13)
+                        .fontColor(Theme.accent(this.isDark))
+                        .fontWeight(FontWeight.Medium)
+                        .margin({ left: 12 })
+                        .onClick(() => {
+                          this.editing = !this.editing;
+                        })
+                    }
+                  }
+                  .width('100%')
+
+                  if (this.myWords.length === 0) {
+                    Text('点击右下角 + 按钮，把视频里遇到的单词记下来')
+                      .fontSize(12)
+                      .fontColor(Theme.inkTertiary(this.isDark))
+                      .width('100%')
+                      .margin({ top: 10 })
+                  } else {
+                    ForEach(this.myWords, (item: MyWordItem) => {
+                      Row() {
+                        Column() {
+                          Row() {
+                            Text(item.word.word)
+                              .fontSize(16)
+                              .fontWeight(FontWeight.Medium)
+                              .fontColor(Theme.ink(this.isDark))
+                            if (item.word.phonetic !== '') {
+                              Text(item.word.phonetic)
+                                .fontSize(11)
+                                .fontColor(Theme.inkTertiary(this.isDark))
+                                .margin({ left: 8 })
+                            }
+                          }
+                          .alignItems(VerticalAlign.Bottom)
+
+                          Row() {
+                            if (item.pos !== '') {
+                              Text(item.pos)
+                                .fontSize(11)
+                                .fontColor(Theme.accent(this.isDark))
+                                .backgroundColor(Theme.accentSoft(this.isDark))
+                                .borderRadius(6)
+                                .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                            }
+                            Text(item.meaning)
+                              .fontSize(14)
+                              .fontColor(Theme.inkSecondary(this.isDark))
+                              .margin({ left: 8 })
+                              .layoutWeight(1)
+                          }
+                          .width('100%')
+                          .alignItems(VerticalAlign.Center)
+                          .margin({ top: 6 })
+                        }
+                        .alignItems(HorizontalAlign.Start)
+                        .layoutWeight(1)
+
+                        // 编辑模式下的删除按钮：红色圆形减号
+                        if (this.editing) {
+                          Stack() {
+                            Text('-')
+                              .fontSize(20)
+                              .fontWeight(FontWeight.Medium)
+                              .fontColor(Color.White)
+                          }
+                          .width(30)
+                          .height(30)
+                          .borderRadius(15)
+                          .backgroundColor(Theme.danger(this.isDark))
+                          .margin({ left: 10 })
+                          .onClick(() => {
+                            this.confirmDelete(item);
+                          })
+                        }
+                      }
+                      .width('100%')
+                      .padding({ top: 10, bottom: 10 })
+                    }, (item: MyWordItem) => `${item.word.id}-${this.editing}`)
+                  }
+                }
+                .alignItems(HorizontalAlign.Start)
+                // 与首页一致的玻璃质感：半透明底 + 背景模糊 + 高光描边 + 悬空阴影
+                .backgroundColor(Theme.glass(this.isDark))
+                .backgroundBlurStyle(BlurStyle.Thin)
+                .border({ width: 1, color: Theme.glassBorder(this.isDark) })
+                .borderRadius(16)
+                .shadow({ radius: 12, color: 'rgba(27,30,40,0.12)', offsetX: 0, offsetY: 6 })
                 .padding(16)
                 .width('100%')
                 .margin({ top: 16 })
@@ -459,6 +963,38 @@ struct VideoPlayPage {
         }
         .width('100%')
         .height('100%')
+      }
+
+      // 右下角"+"悬浮按钮：打开添加单词面板（全屏时隐藏，避免遮挡控制栏）
+      // 动效：出现/消失时缩放淡入淡出（transition），点击时弹跳回弹（keyframe）
+      if (!this.fullscreen) {
+        Stack() {
+          Text('+')
+            .fontSize(30)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(Color.White)
+        }
+        .width(56)
+        .height(56)
+        .borderRadius(28)
+        .backgroundColor(Theme.accent(this.isDark))
+        .shadow({ radius: 16, color: 'rgba(0, 0, 0, 0.28)', offsetX: 0, offsetY: 5 })
+        .scale({ x: this.fabScale, y: this.fabScale })
+        .transition(TransitionEffect.scale({ x: 0.6, y: 0.6 })
+          .combine(TransitionEffect.OPACITY)
+          .animation({ duration: 260, curve: Curve.EaseOut }))
+        .position({ x: '95%', y: '100%' })
+        .markAnchor({ x: '100%', y: '100%' })
+        .offset({ x: -24, y: -32 })
+        .onClick(() => {
+          this.playFabAnim();
+          this.openAddPanel();
+        })
+      }
+
+      // 添加单词面板：仅在展开时渲染（收起时组件不存在，不拦截页面触摸）
+      if (this.showAddPanel) {
+        this.AddWordPanel()
       }
     }
     .width('100%')

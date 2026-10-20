@@ -2,7 +2,6 @@ import { router } from '@kit.ArkUI';
 import { BOOKS } from '../data/WordData';
 import { Store } from '../store/Store';
 import { Theme } from '../common/Theme';
-import { ThemeToggle } from '../view/ThemeToggle';
 import { Word } from '../model/WordModel';
 
 // 排序方式：0 收藏时间，1 首字母，2 词库
@@ -159,9 +158,6 @@ struct FavoritePage {
       Text(`${this.shown.length} 词`)
         .fontSize(13)
         .fontColor(Theme.inkSecondary(this.isDark))
-      // 右上角月亮按钮：与标题行对齐，点击切换深色/浅色模式
-      ThemeToggle()
-        .margin({ left: 10 })
     }
     .width('100%')
     .padding({ left: 8, right: 24, top: 8, bottom: 8 })
@@ -174,7 +170,9 @@ struct FavoritePage {
         .height(42)
         .fontColor(Theme.ink(this.isDark))
         .placeholderColor(Theme.inkTertiary(this.isDark))
-        .backgroundColor(Theme.card(this.isDark))
+        .backgroundColor(Theme.glass(this.isDark))
+        .backgroundBlurStyle(BlurStyle.Thin)
+        .border({ width: 1, color: Theme.glassBorder(this.isDark) })
         .borderRadius(21)
         .onChange((value: string) => {
           this.keyword = value;
@@ -187,7 +185,7 @@ struct FavoritePage {
             .fontSize(12)
             .fontWeight(this.sortMode === i ? FontWeight.Medium : FontWeight.Normal)
             .fontColor(this.sortMode === i ? Theme.accent(this.isDark) : Theme.inkSecondary(this.isDark))
-            .backgroundColor(this.sortMode === i ? Theme.accentSoft(this.isDark) : Theme.card(this.isDark))
+            .backgroundColor(this.sortMode === i ? Theme.accentSoft(this.isDark) : Theme.glass(this.isDark))
             .borderRadius(15)
             .padding({ left: 12, right: 12, top: 5, bottom: 5 })
             .onClick(() => {
@@ -291,8 +289,12 @@ struct FavoritePage {
               }
               .width('100%')
               .alignItems(VerticalAlign.Center)
-              .backgroundColor(Theme.card(this.isDark))
+              // 与首页一致的玻璃质感：半透明底 + 背景模糊 + 高光描边 + 悬空阴影
+              .backgroundColor(Theme.glass(this.isDark))
+              .backgroundBlurStyle(BlurStyle.Thin)
+              .border({ width: 1, color: Theme.glassBorder(this.isDark) })
               .borderRadius(18)
+              .shadow({ radius: 12, color: 'rgba(27,30,40,0.12)', offsetX: 0, offsetY: 6 })
               .padding(16)
             }
           }, (item: FavoriteItem) => `${item.word.id}-${item.favorited}`)
