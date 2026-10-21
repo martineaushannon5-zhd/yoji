@@ -264,6 +264,25 @@ export function deleteVideo(id) {
   return run('DELETE FROM videos WHERE id = ?', id).changes > 0;
 }
 
+/* ---------------------------- admin panel ---------------------------- */
+
+export function listUsers() {
+  return all(
+    'SELECT id, account, nickname, avatar, created_at, updated_at FROM users ORDER BY created_at DESC'
+  ).map((row) => ({
+    id: row.id,
+    account: row.account,
+    nickname: row.nickname,
+    avatar: row.avatar,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  }));
+}
+
+export function deleteUserById(id) {
+  return run('DELETE FROM users WHERE id = ?', id).changes > 0;
+}
+
 /* ------------------------------- misc -------------------------------- */
 
 export function stats() {

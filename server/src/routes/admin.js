@@ -6,7 +6,6 @@ import {
   deleteVideo,
   getVideo,
   listVideos,
-  stats,
   updateVideo
 } from '../db.js';
 import { asyncRoute, ErrorCode, fail, ok } from '../http.js';
@@ -72,11 +71,6 @@ function parseVideoInput(body, existing = null) {
 adminRouter.get(
   '/ping',
   asyncRoute(async (req, res) => ok(res, { ok: true }, 'admin token valid'))
-);
-
-adminRouter.get(
-  '/stats',
-  asyncRoute(async (req, res) => ok(res, stats()))
 );
 
 adminRouter.get(

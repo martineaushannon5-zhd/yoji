@@ -290,24 +290,65 @@ PUT /api/progress
 
 ### 4. 后台管理
 
-请求头使用独立的管理令牌（不是用户 token）：
+后台有两种鉴权方式，互不混用：
 
+1. **管理后台（Yoji Admin）**：`POST /api/admin/login` 用管理员账号 + `ADMIN_TOKEN` 换 JWT，之后带 `Authorization: Bearer <token>` 访问统计/用户接口。
+2. **视频运维脚本**：继续使用 `X-Admin-Token: <ADMIN_TOKEN>`，方便 curl 直接改视频。
+
+管理员账号默认 `admin`（`ADMIN_ACCOUNT` 可改），**登录密码就是 `ADMIN_TOKEN`**。令牌在 `/opt/yoji/server/.env`：
+
+```bash
+grep ADMIN_ACCOUNT /opt/yoji/server/.env
+grep ADMIN_TOKEN /opt/yoji/server/.env
 ```
-X-Admin-Token: <ADMIN_TOKEN>
+
+| 方法 | 路径 | 鉴权 | 说明 |
+| --- | --- | --- | --- |
+| POST | `/api/admin/login` | 无 | 管理员登录，返回 JWT |
+| GET | `/api/admin/stats` | Bearer JWT | 总用户、今日活跃、学习趋势 |
+| GET | `/api/admin/users` | Bearer JWT | 用户列表，支持 `search/page/pageSize` |
+| DELETE | `/api/admin/users/:id` | Bearer JWT | 删除用户及其进度 |
+| GET | `/api/admin/ping` | X-Admin-Token | 验证运维令牌 |
+| GET | `/api/admin/videos` | X-Admin-Token | 全部视频（含隐藏） |
+| POST | `/api/admin/videos` | X-Admin-Token | 新增视频 |
+| PATCH | `/api/admin/videos/:id` | X-Admin-Token | 修改视频 |
+| DELETE | `/api/admin/videos/:id` | X-Admin-Token | 删除视频 |
+
+管理员登录：
+
+```bash
+curl -X POST https://你的域名/api/admin/login \
+  -H "Content-Type: application/json" \
+  -d '{"account":"admin","password":"你的ADMIN_TOKEN"}'
 ```
 
-令牌在 `/opt/yoji/server/.env` 里，`grep ADMIN_TOKEN /opt/yoji/server/.env` 查看。
+返回：
 
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| GET | `/api/admin/ping` | 验证令牌 |
-| GET | `/api/admin/stats` | 用户数 / 视频数 |
-| GET | `/api/admin/videos` | 全部视频（含隐藏） |
-| POST | `/api/admin/videos` | 新增视频 |
-| PATCH | `/api/admin/videos/:id` | 修改视频 |
-| DELETE | `/api/admin/videos/:id` | 删除视频 |
+```json
+{
+  "code": 0,
+  "message": "登录成功",
+  "data": { "token": "eyJ...", "account": "admin", "expiresIn": "12h" }
+}
+```
 
-新增视频示例：
+用户列表：
+
+```bash
+TOKEN=登录返回的 token
+
+curl "https://你的域名/api/admin/users?search=&page=1&pageSize=10" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+统计：
+
+```bash
+curl https://你的域名/api/admin/stats \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+新增视频示例（运维脚本仍用 X-Admin-Token）：
 
 ```bash
 curl -X POST https://你的域名/api/admin/videos \
@@ -331,6 +372,8 @@ curl -X PATCH https://你的域名/api/admin/videos/ted-focus \
   -H "X-Admin-Token: 你的ADMIN_TOKEN" \
   -d '{"videoUrl":"https://cdn.example.com/ted/focus.mp4","visible":true}'
 ```
+
+管理后台前端在 `yoji-admin/`，静态部署与 Nginx 反代见 [../docs/deploy-admin-baota.md](../docs/deploy-admin-baota.md)。
 
 ### 5. 错误码
 
@@ -377,9 +420,9 @@ MEDIA_DIR=./media
 
 1. **密码**：bcrypt（cost 10）加盐哈希；登录时账号不存在也做一次同成本比对，避免时间侧信道枚举账号。
 2. **登录态**：JWT HS256，30 天；数据库存 `token_version`，退出登录 / 改密码后旧 token 立刻失效。
-3. **限流**：全局 300 次/分钟/IP；登录注册 100 次/15 分钟；注册 10 次/小时。
+3. **限流**：全局 300 次/分钟/IP；登录注册 100 次/15 分钟；注册 10 次/小时；管理后台登录 20 次/15 分钟。
 4. **输入校验**：账号、密码、进度快照全部白名单清洗，限制字段数量和长度，进度请求最大 1 MB。
-5. **管理接口隔离**：`ADMIN_TOKEN` 与用户体系完全分开，使用常量时间比较。
+5. **管理接口隔离**：`ADMIN_TOKEN` 与用户体系完全分开；管理后台走独立 `role=admin` JWT，普通用户 token 无法访问后台接口，令牌同样使用常量时间比较。
 6. **SQL 注入**：全部使用参数化查询，不拼接 SQL。
 7. **部署**：Node 只监听 `127.0.0.1`，外部只能经 Nginx；systemd 开了 `NoNewPrivileges`、`ProtectSystem` 等加固。
 

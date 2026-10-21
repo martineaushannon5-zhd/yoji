@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
   ArrowUpRight,
   Database,
@@ -56,7 +57,7 @@ const features = [
     icon: Database,
     title: "API Ready",
     description:
-      "阶段二接入 Axios 拦截器与 SWR，所有请求统一走远程 Node 接口。",
+      "Axios 拦截器 + SWR 已接入，管理员登录、统计与用户接口统一走 Node。",
   },
   {
     icon: ShieldCheck,
@@ -91,7 +92,7 @@ export default function Home() {
             variant="outline"
             className="rounded-full border-border bg-card px-3 py-1 text-[10px] font-normal uppercase tracking-[0.18em] text-muted-foreground"
           >
-            Phase 01
+            Console
           </Badge>
         </header>
 
@@ -108,17 +109,19 @@ export default function Home() {
           </h1>
 
           <p className="mt-7 max-w-xl text-[15px] leading-7 text-muted-foreground">
-            Yoji 背单词后台管理系统。阶段一已完成 Next.js 静态导出、Claude
-            风格设计令牌、Tailwind 与 Shadcn 基础组件，以及 Lora / Inter
-            字体的本地自托管。
+            Yoji 背单词后台管理系统。管理员登录、数据大盘、用户管理与视频配置已接通，
+            用一套安静的界面管理用户与学习进度。
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Button disabled className="h-10 rounded-full px-5">
-              登录页将在阶段三接入
+            <Button asChild className="h-10 rounded-full px-5">
+              <Link href="/login">
+                进入控制台
+                <ArrowUpRight className="size-4" />
+              </Link>
             </Button>
             <span className="font-mono text-xs text-muted-foreground">
-              http://120.24.171.99
+              admin · ADMIN_TOKEN
             </span>
           </div>
         </section>
@@ -187,7 +190,8 @@ export default function Home() {
               <Separator />
 
               <p className="text-[11px] leading-5 text-muted-foreground">
-                阶段二接入 Axios 拦截器与 SWR，阶段三实现真正的登录流程。
+                管理员登录、统计卡片、趋势图与用户表格已接入。部署时把
+                /api 反向代理到 Node 即可。
               </p>
             </CardContent>
           </Card>

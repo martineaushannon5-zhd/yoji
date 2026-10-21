@@ -120,8 +120,9 @@ cat <<EOF
    certbot --nginx -d 你的域名
    nginx -t && systemctl reload nginx
 
-3) 记下后台管理令牌（添加/修改视频要用）：
+3) 记下后台管理令牌（后台登录密码 + 视频管理令牌）：
    grep ADMIN_TOKEN $SERVER_DIR/.env
+   后台登录账号 admin，密码就是上面的 ADMIN_TOKEN
 
 接口自测：
    curl https://你的域名/healthz

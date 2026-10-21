@@ -79,3 +79,49 @@ export function requireAdmin(req, res, next) {
   }
   next();
 }
+
+/**
+ * 管理后台登录：账号固定为 ADMIN_ACCOUNT，密码为 ADMIN_TOKEN。
+ * 两者都用常量时间比较，避免从响应时间推断。
+ */
+export function verifyAdminCredentials(account, password) {
+  if (!config.adminToken) {
+    return false;
+  }
+  const accountOk = safeEqual(account, config.adminAccount);
+  const passwordOk = safeEqual(password, config.adminToken);
+  return accountOk && passwordOk;
+}
+
+export function signAdminToken() {
+  return jwt.sign(
+    { sub: 'admin', role: 'admin' },
+    config.jwtSecret,
+    { expiresIn: config.adminJwtTtl, algorithm: 'HS256' }
+  );
+}
+
+/** 管理后台 JWT：必须带 role=admin，普通用户 token 不能访问后台接口 */
+export function requireAdminJwt(req, res, next) {
+  const token = readBearer(req);
+  if (!token) {
+    return fail(res, 401, ErrorCode.UNAUTHORIZED, '请先登录管理后台');
+  }
+  let payload;
+  try {
+    payload = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] });
+  } catch (err) {
+    const expired = err?.name === 'TokenExpiredError';
+    return fail(
+      res,
+      401,
+      expired ? ErrorCode.TOKEN_EXPIRED : ErrorCode.UNAUTHORIZED,
+      expired ? '管理登录已过期，请重新登录' : '管理登录状态无效'
+    );
+  }
+  if (payload.role !== 'admin' || payload.sub !== 'admin') {
+    return fail(res, 403, ErrorCode.FORBIDDEN, '没有后台管理权限');
+  }
+  req.admin = { account: config.adminAccount };
+  next();
+}

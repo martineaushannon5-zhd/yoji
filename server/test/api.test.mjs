@@ -289,6 +289,56 @@ test('视频：公开列表 + 后台增删改', async () => {
   assert.equal(removed.status, 200);
 });
 
+test('管理后台：登录、统计、用户列表、删除', async () => {
+  const denied = await api('/api/admin/login', {
+    method: 'POST',
+    body: { account: 'admin', password: 'wrong-password' }
+  });
+  assert.equal(denied.status, 401);
+
+  const login = await api('/api/admin/login', {
+    method: 'POST',
+    body: { account: 'admin', password: state.adminToken }
+  });
+  assert.equal(login.status, 200);
+  const adminJwt = login.body.data.token;
+  assert.ok(adminJwt);
+
+  const noAuth = await api('/api/admin/stats');
+  assert.equal(noAuth.status, 401);
+
+  const statsRes = await api('/api/admin/stats', { token: adminJwt });
+  assert.equal(statsRes.status, 200);
+  assert.ok(statsRes.body.data.totalUsers >= 1);
+  assert.equal(statsRes.body.data.trend.length, 14);
+
+  const usersRes = await api('/api/admin/users?search=student01', { token: adminJwt });
+  assert.equal(usersRes.status, 200);
+  assert.equal(usersRes.body.data.users.length, 1);
+  assert.equal(usersRes.body.data.users[0].account, 'student01');
+  assert.equal(typeof usersRes.body.data.users[0].mastered, 'number');
+  assert.equal(usersRes.body.data.users[0].activeDates, undefined);
+
+  // 创建一个一次性用户，验证删除与级联
+  const disposable = await api('/api/auth/register', {
+    method: 'POST',
+    body: { account: 'delete-me', password: 'secret123' }
+  });
+  assert.equal(disposable.status, 200);
+  const disposableId = disposable.body.data.userId;
+  const removed = await api(`/api/admin/users/${disposableId}`, {
+    method: 'DELETE',
+    token: adminJwt
+  });
+  assert.equal(removed.status, 200);
+
+  const removedLogin = await api('/api/auth/login', {
+    method: 'POST',
+    body: { account: 'delete-me', password: 'secret123' }
+  });
+  assert.equal(removedLogin.status, 401);
+});
+
 test('退出登录后旧 token 立即失效', async () => {
   const logout = await api('/api/auth/logout', { method: 'POST', token: state.token });
   assert.equal(logout.status, 200);

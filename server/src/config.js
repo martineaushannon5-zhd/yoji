@@ -37,6 +37,8 @@ export const config = {
   jwtTtlDays: int(process.env.JWT_TTL_DAYS, 30),
 
   adminToken: process.env.ADMIN_TOKEN || '',
+  adminAccount: process.env.ADMIN_ACCOUNT || 'admin',
+  adminJwtTtl: process.env.ADMIN_JWT_TTL || '12h',
   bcryptRounds: Math.min(12, Math.max(8, int(process.env.BCRYPT_ROUNDS, 10))),
 
   dataDir: path.resolve(process.env.DATA_DIR || path.join(serverRoot, 'data')),

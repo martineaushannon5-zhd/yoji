@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit';
 import { config } from './config.js';
 import { ErrorCode, fail } from './http.js';
 import { authRouter } from './routes/auth.js';
+import { adminPanelRouter } from './routes/adminPanel.js';
 import { progressRouter } from './routes/progress.js';
 import { videosRouter } from './routes/videos.js';
 import { adminRouter } from './routes/admin.js';
@@ -64,6 +65,15 @@ const registerLimiter = rateLimit({
   message: { code: ErrorCode.RATE_LIMITED, message: '注册过于频繁，请稍后再试', data: null }
 });
 
+// 管理后台登录单独限流，防止暴力猜 ADMIN_TOKEN
+const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { code: ErrorCode.RATE_LIMITED, message: '管理登录尝试过多，请 15 分钟后再试', data: null }
+});
+
 app.get('/healthz', (req, res) => {
   res.json({
     status: 'ok',
@@ -77,6 +87,8 @@ app.use('/api/auth/register', registerLimiter);
 app.use('/api/auth', authLimiter, authRouter);
 app.use('/api/progress', progressRouter);
 app.use('/api/videos', videosRouter);
+app.use('/api/admin/login', adminLoginLimiter);
+app.use('/api/admin', adminPanelRouter);
 app.use('/api/admin', adminRouter);
 
 // 媒体文件：开发 / 单机部署时由 Node 直接提供，生产建议交给 Nginx
