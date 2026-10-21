@@ -70,6 +70,15 @@ const UPDATE_LOGS: UpdateLog[] = [
       '新增退出登录、换账号数据隔离与云端清空',
       '视频改为在线链接播放，安装包体积减小'
     ]
+  },
+  {
+    version: 'v1.3.0',
+    date: '2026-10-21',
+    items: [
+      '接入后端，现在可以正常注册和登录账号了',
+      '优化视频播放，将视频放入后端服务器里，轻量化软件',
+      '优化用户体验'
+    ]
   }
 ];
 
@@ -193,7 +202,7 @@ struct AboutPage {
               .fontWeight(FontWeight.Bold)
               .fontColor(Theme.ink(this.isDark))
               .margin({ top: 12 })
-            Text('v1.2.0')
+            Text('v1.3.0')
               .fontSize(13)
               .fontColor(Theme.inkSecondary(this.isDark))
               .margin({ top: 4 })

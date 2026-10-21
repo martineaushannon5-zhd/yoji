@@ -568,11 +568,17 @@ export struct MineView {
               .textAlign(TextAlign.Center)
               .width('100%')
               .height(52)
+              // 玻璃质感：半透明底 + 背景模糊 + 高光描边 + 悬空阴影，与其他入口按钮一致
               .backgroundColor(Theme.glass(this.isDark))
               .backgroundBlurStyle(BlurStyle.Thin)
               .border({ width: 1, color: Theme.glassBorder(this.isDark) })
               .borderRadius(18)
+              .shadow({ radius: 12, color: 'rgba(27,30,40,0.12)', offsetX: 0, offsetY: 6 })
               .margin({ top: 14, bottom: 104 })
+              .clickEffect({ level: ClickEffectLevel.LIGHT })
+              .translate({ y: this.enter ? 0 : 28 })
+              .opacity(this.enter ? 1 : 0)
+              .animation({ duration: 480, curve: Curve.Friction, delay: 490 })
               .onClick(() => {
                 this.confirmLogout();
               })

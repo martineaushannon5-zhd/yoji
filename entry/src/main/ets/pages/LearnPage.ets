@@ -46,10 +46,13 @@ struct LearnPage {
   @State showSwipeGuide: boolean = false;
   @State guideOpacity: number = 0;
   @State guidePhase: boolean = false;
+  // 卡片底部滑动提示：停留约 3 秒后渐显一行小字
+  @State hintOpacity: number = 0;
   // 深色模式开关：双向绑定 AppStorage，切换后页面配色同步刷新
   @StorageLink('darkMode') isDark: boolean = false;
   private guideTimer: number = -1;
   private guideClosing: boolean = false;
+  private hintTimer: number = -1;
   private store: Store = Store.get();
   private bookName: string = '';
 
@@ -89,6 +92,10 @@ struct LearnPage {
       this.store.markSwipeGuideSeen();
       this.playSwipeGuide();
     }
+    // 非首次进入（无黑屏引导）时启动底部提示计时；首次进入待引导关闭后再启动
+    if (this.mode === 'learn' && !this.showSwipeGuide) {
+      this.scheduleHint();
+    }
   }
 
   aboutToDisappear(): void {
@@ -96,6 +103,23 @@ struct LearnPage {
       clearInterval(this.guideTimer);
       this.guideTimer = -1;
     }
+    if (this.hintTimer >= 0) {
+      clearTimeout(this.hintTimer);
+      this.hintTimer = -1;
+    }
+  }
+
+  // 底部滑动提示：停留约 3 秒后渐显，说明左右滑含义
+  private scheduleHint(): void {
+    if (this.hintTimer >= 0) {
+      clearTimeout(this.hintTimer);
+    }
+    this.hintTimer = setTimeout(() => {
+      this.hintTimer = -1;
+      animateTo({ duration: 500, curve: Curve.EaseOut }, () => {
+        this.hintOpacity = 1;
+      });
+    }, 3000);
   }
 
   // 播放引导动效：箭头往复滑动，淡入后自动关闭
@@ -128,6 +152,8 @@ struct LearnPage {
         clearInterval(this.guideTimer);
         this.guideTimer = -1;
       }
+      // 引导关闭后启动底部提示计时
+      this.scheduleHint();
     }, 400);
   }
 
@@ -374,6 +400,13 @@ struct LearnPage {
       .layoutWeight(1)
       .translate({ x: this.offsetX })
       .rotate({ angle: this.offsetX / 18 })
+
+      // 卡片底部滑动提示：置于卡片正下方（不覆盖卡片，不影响点击与滑动手势），停留约 3 秒后渐显
+      Text('左滑：不认识 · 右滑：认识')
+        .fontSize(12)
+        .fontColor(Theme.inkTertiary(this.isDark))
+        .margin({ top: 10 })
+        .opacity(this.hintOpacity)
     }
     .layoutWeight(1)
     .padding(24)

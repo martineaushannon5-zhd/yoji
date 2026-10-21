@@ -227,7 +227,7 @@ struct Index {
   private dateLabel(): string {
     const d = new Date();
     const week: string[] = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-    return `今天是 ${d.getMonth() + 1}月${d.getDate()}日 · ${week[d.getDay()]}`;
+    return `${d.getMonth() + 1}月${d.getDate()}日 · ${week[d.getDay()]}`;
   }
 
   // 液态玻璃顶部受光边缘：与底部导航栏同款高光线
