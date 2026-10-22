@@ -57,6 +57,7 @@ npm start        # 预览 out/：http://localhost:4173
 | `/dashboard` | 3 张指标卡 + Recharts 14 天趋势图 + 附加统计 |
 | `/users` | 用户表格、搜索、分页、删除确认 |
 | `/videos` | 视频列表、浏览器上传视频/封面、编辑、显示/隐藏、删除 |
+| `/wordbooks` | 查看当前词表、上传 .txt/.json 词表、预览、启用/隐藏、删除 |
 
 ![登录页](../docs/admin-login.png)
 
@@ -105,6 +106,11 @@ yoji-admin/
 | POST | `/api/admin/videos/upload` | multipart：video + cover + 标题/日期/排序 |
 | PATCH | `/api/admin/videos/:id` | 修改标题/日期/排序/显示状态 |
 | DELETE | `/api/admin/videos/:id` | 删除视频记录 |
+| GET | `/api/admin/wordbooks` | 后台词表列表 |
+| POST | `/api/admin/wordbooks/upload` | multipart 上传 .txt/.json 词表 |
+| PATCH | `/api/admin/wordbooks/:id` | 启用/隐藏/改名 |
+| DELETE | `/api/admin/wordbooks/:id` | 删除词表 |
+| GET | `/api/wordbooks/full` | App 拉取全部启用词表 |
 
 详细字段见 [server/README.md](../server/README.md) 的「后台管理」。
 

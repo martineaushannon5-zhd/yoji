@@ -2,6 +2,7 @@ import { common } from '@kit.AbilityKit';
 import { font, router } from '@kit.ArkUI';
 import { Store } from '../store/Store';
 import { CloudSync } from '../common/CloudSync';
+import { loadRemoteWordBooks } from '../data/WordData';
 
 // 欢迎页：每次启动时展示，稍后按登录态进入登录页或首页
 @Entry
@@ -20,6 +21,8 @@ struct SplashPage {
     // 先初始化全局存储，确保能读取登录态
     const ctx = getContext(this) as common.UIAbilityContext;
     await this.store.init(ctx);
+    // 启动时拉取后台词表；失败则保留内置 60 词兜底
+    await loadRemoteWordBooks();
     // 恢复上次选择的主题（深色/浅色），供各页面 @StorageLink 读取
     AppStorage.setOrCreate('darkMode', this.store.darkMode);
     // 学习进度每次落盘后触发防抖上云；Store 本身不感知网络

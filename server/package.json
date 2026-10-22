@@ -12,6 +12,7 @@
     "dev": "node --watch src/server.js",
     "seed": "node scripts/seed.js",
     "sync-media": "node scripts/sync-media.js",
+    "import-wordbooks": "node scripts/import-wordbooks.js",
     "test": "node --test test/api.test.mjs"
   },
   "dependencies": {

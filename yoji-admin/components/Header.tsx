@@ -18,6 +18,10 @@ const TITLES: Record<string, { title: string; subtitle: string }> = {
     title: "视频管理",
     subtitle: "可视化添加视频、上传封面与维护列表",
   },
+  "/wordbooks": {
+    title: "词表管理",
+    subtitle: "查看 App 词表、上传新词表与启用状态",
+  },
 };
 
 interface HeaderProps {

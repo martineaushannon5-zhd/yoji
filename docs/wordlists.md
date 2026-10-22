@@ -2,6 +2,14 @@
 
 当前 App 的 `WordData.ets` 只有约 60 个四级核心词，继续扩展建议不要手工维护，直接用现成词库 + 导入脚本。
 
+> **2026-10-22 已导入后台词表：**
+>
+> - `CET-4 四级词汇`：4538 词
+> - `CET-6 六级词汇`：2220 词
+> - `CET-4+6 四六级合并`：8013 词（其中 1843 个词在源词表/补充词典中没有释义，App 仍可显示单词）
+>
+> 后台地址：<http://120.24.171.99/wordbooks/> 或 <https://yoji.zhdstudy.cyou/wordbooks/>。App 启动时请求 `/api/wordbooks/full` 获取启用的词表。
+
 ## 一、首选：ECDICT（开源、可离线、MIT）
 
 - 项目：<https://github.com/skywind3000/ECDICT>

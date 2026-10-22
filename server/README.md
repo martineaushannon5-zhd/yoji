@@ -318,6 +318,26 @@ PUT /api/progress
 
 `videoUrl` / `thumbUrl` 可以是站内相对路径 `/media/...`，也可以是完整的 CDN 地址 `https://cdn.example.com/xxx.mp4`。**App 端把相对路径拼上服务器域名即可。**
 
+### 3.1 词表
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/wordbooks` | 启用词表摘要（公开） |
+| GET | `/api/wordbooks/full` | 启用词表 + 全部单词（App 启动时使用） |
+| GET | `/api/wordbooks/:id` | 单个词表完整内容 |
+
+词表文件格式：
+
+- `.txt`：每行 `word` 或 `word [phonetic] 中文释义`；
+- `.json`：`{ "words": [{ "word": "...", "phonetic": "...", "meaning": "..." }] }`。
+
+后台在 `/wordbooks/` 上传，或：
+
+```bash
+cd /opt/yoji/server
+npm run import-wordbooks /tmp/wordlists
+```
+
 ### 4. 后台管理
 
 后台有两种鉴权方式，互不混用：
@@ -349,7 +369,12 @@ grep ADMIN_TOKEN /opt/yoji/server/.env
 | POST | `/api/admin/videos/scan` | JWT / X-Admin-Token | 扫描 `media/videos`，自动登记新视频 |
 | POST | `/api/admin/videos` | JWT / X-Admin-Token | 新增视频 |
 | PATCH | `/api/admin/videos/:id` | X-Admin-Token | 修改视频 |
-| DELETE | `/api/admin/videos/:id` | X-Admin-Token | 删除视频 |
+| DELETE | `/api/admin/videos/:id` | JWT / X-Admin-Token | 删除视频 |
+| GET | `/api/admin/wordbooks` | JWT | 后台词表列表（含隐藏） |
+| POST | `/api/admin/wordbooks/upload` | JWT | multipart 上传 .txt/.json 词表 |
+| GET | `/api/admin/wordbooks/:id` | JWT | 词表完整内容（预览） |
+| PATCH | `/api/admin/wordbooks/:id` | JWT | 启用/隐藏/改名 |
+| DELETE | `/api/admin/wordbooks/:id` | JWT | 删除词表 |
 
 管理员登录：
 

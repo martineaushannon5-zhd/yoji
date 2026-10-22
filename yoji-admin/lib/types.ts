@@ -62,3 +62,33 @@ export interface AdminVideo {
 export interface AdminVideosPayload {
   videos: AdminVideo[];
 }
+
+export interface AdminWord {
+  id: string;
+  word: string;
+  phonetic: string;
+  meaning: string;
+  example: string;
+  exampleCn: string;
+}
+
+export interface AdminWordBook {
+  id: string;
+  name: string;
+  subtitle: string;
+  description: string;
+  source: string;
+  wordCount: number;
+  visible: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminWordBookDetail extends AdminWordBook {
+  words: AdminWord[];
+}
+
+export interface AdminWordBooksPayload {
+  books: AdminWordBook[];
+}

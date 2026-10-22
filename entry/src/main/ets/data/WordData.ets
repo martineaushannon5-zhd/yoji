@@ -1,4 +1,5 @@
 import { Word, WordBook } from '../model/WordModel';
+import { Api, RemoteWordBook } from '../common/Api';
 
 function w(id: string, word: string, phonetic: string, meaning: string,
   example: string, exampleCn: string): Word {
@@ -165,4 +166,45 @@ export function findWord(wordId: string): Word | undefined {
     }
   }
   return undefined;
+}
+
+/**
+ * 从后台拉取管理员配置的词表。
+ * 成功时替换内置 BOOKS / SELECTABLE_BOOKS；失败保留内置词表，保证离线可用。
+ */
+export async function loadRemoteWordBooks(): Promise<boolean> {
+  const result = await Api.fetchWordBooks();
+  if (!result.ok || result.books.length === 0) {
+    console.warn(`[WordData] 远程词表不可用: ${result.message}`);
+    return false;
+  }
+
+  const nextBooks: WordBook[] = [];
+  for (let i = 0; i < result.books.length; i++) {
+    const remote: RemoteWordBook = result.books[i];
+    if (remote.id === 'custom') {
+      continue;
+    }
+    nextBooks.push(makeBook(remote.id, remote.name, remote.subtitle, remote.words));
+  }
+  if (nextBooks.length === 0) {
+    return false;
+  }
+  nextBooks.push(CUSTOM_BOOK);
+  BOOKS.length = 0;
+  for (let i = 0; i < nextBooks.length; i++) {
+    BOOKS.push(nextBooks[i]);
+  }
+
+  const selectable: WordBook[] = [];
+  for (let i = 0; i < BOOKS.length; i++) {
+    if (BOOKS[i].id !== 'custom') {
+      selectable.push(BOOKS[i]);
+    }
+  }
+  SELECTABLE_BOOKS.length = 0;
+  for (let i = 0; i < selectable.length; i++) {
+    SELECTABLE_BOOKS.push(selectable[i]);
+  }
+  return true;
 }

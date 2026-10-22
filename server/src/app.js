@@ -8,8 +8,10 @@ import { config } from './config.js';
 import { ErrorCode, fail } from './http.js';
 import { authRouter } from './routes/auth.js';
 import { adminPanelRouter } from './routes/adminPanel.js';
+import { adminWordbooksRouter } from './routes/adminWordbooks.js';
 import { progressRouter } from './routes/progress.js';
 import { videosRouter } from './routes/videos.js';
+import { wordbooksRouter } from './routes/wordbooks.js';
 import { adminRouter } from './routes/admin.js';
 
 export const app = express();
@@ -87,7 +89,9 @@ app.use('/api/auth/register', registerLimiter);
 app.use('/api/auth', authLimiter, authRouter);
 app.use('/api/progress', progressRouter);
 app.use('/api/videos', videosRouter);
+app.use('/api/wordbooks', wordbooksRouter);
 app.use('/api/admin/login', adminLoginLimiter);
+app.use('/api/admin/wordbooks', adminWordbooksRouter);
 app.use('/api/admin', adminPanelRouter);
 app.use('/api/admin', adminRouter);
 

@@ -399,6 +399,49 @@ test('管理后台：hans/zhd 测试账号与视频文件上传', async () => {
   assert.equal(removed.status, 200);
 });
 
+test('词表：管理员上传、公开列表、删除', async () => {
+  const login = await api('/api/admin/login', {
+    method: 'POST',
+    body: { account: 'hans', password: '123456' }
+  });
+  assert.equal(login.status, 200);
+  const token = login.body.data.token;
+
+  const form = new FormData();
+  form.append('name', '测试词表');
+  form.append('subtitle', '单元测试');
+  form.append('file', new File([
+    'abandon [əˈbændən] v. 放弃\nability [əˈbɪləti] n. 能力\n'
+  ], 'test-words.txt', { type: 'text/plain' }));
+
+  const upload = await fetch(`${baseUrl}/api/admin/wordbooks/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+  const uploaded = await upload.json();
+  assert.equal(upload.status, 200);
+  assert.equal(uploaded.code, 0);
+  const bookId = uploaded.data.id;
+  assert.equal(uploaded.data.wordCount, 2);
+
+  const list = await api('/api/admin/wordbooks', { token });
+  assert.equal(list.status, 200);
+  assert.ok(list.body.data.books.some((book) => book.id === bookId));
+
+  const pub = await api('/api/wordbooks/full');
+  assert.equal(pub.status, 200);
+  const publicBook = pub.body.data.books.find((book) => book.id === bookId);
+  assert.ok(publicBook);
+  assert.equal(publicBook.words[0].word, 'abandon');
+
+  const removed = await api(`/api/admin/wordbooks/${bookId}`, {
+    method: 'DELETE',
+    token
+  });
+  assert.equal(removed.status, 200);
+});
+
 test('管理后台：登录、统计、用户列表、删除', async () => {
   const denied = await api('/api/admin/login', {
     method: 'POST',

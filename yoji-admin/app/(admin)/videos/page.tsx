@@ -195,6 +195,10 @@ export default function VideosPage() {
         }
         await api.post("/admin/videos/upload", body, {
           headers: { "Content-Type": "multipart/form-data" },
+          // 大视频上传可能持续几分钟，不能被全局 20s 超时打断
+          timeout: 60 * 60 * 1000,
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
           onUploadProgress: (event) => {
             if (event.total) {
               setProgress(Math.min(99, Math.round((event.loaded / event.total) * 100)));

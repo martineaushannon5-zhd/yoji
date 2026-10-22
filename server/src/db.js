@@ -59,6 +59,20 @@ CREATE TABLE IF NOT EXISTS admins (
   password_hash TEXT NOT NULL,
   created_at    TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS word_books (
+  id          TEXT PRIMARY KEY,
+  name        TEXT NOT NULL,
+  subtitle    TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  source      TEXT NOT NULL DEFAULT '',
+  words_json  TEXT NOT NULL DEFAULT '[]',
+  word_count  INTEGER NOT NULL DEFAULT 0,
+  visible     INTEGER NOT NULL DEFAULT 1,
+  sort_order  INTEGER NOT NULL DEFAULT 0,
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL
+);
 `);
 
 const now = () => new Date().toISOString();
@@ -325,6 +339,92 @@ export function ensureAdminUsers() {
       createAdmin(item.account, bcrypt.hashSync(item.password, config.bcryptRounds));
     }
   }
+}
+
+/* ----------------------------- word books ---------------------------- */
+
+function mapWordBook(row, includeWords = false) {
+  if (!row) {
+    return undefined;
+  }
+  let words = [];
+  if (includeWords) {
+    try {
+      words = JSON.parse(row.words_json);
+    } catch {
+      words = [];
+    }
+  }
+  return {
+    id: row.id,
+    name: row.name,
+    subtitle: row.subtitle,
+    description: row.description,
+    source: row.source,
+    wordCount: Number(row.word_count),
+    visible: Number(row.visible) === 1,
+    sortOrder: Number(row.sort_order),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    ...(includeWords ? { words } : {})
+  };
+}
+
+export function listWordBooks({ includeHidden = false } = {}) {
+  const rows = includeHidden
+    ? all('SELECT * FROM word_books ORDER BY sort_order ASC, created_at ASC')
+    : all('SELECT * FROM word_books WHERE visible = 1 ORDER BY sort_order ASC, created_at ASC');
+  return rows.map((row) => mapWordBook(row));
+}
+
+export function getWordBook(id, { includeHidden = false, includeWords = false } = {}) {
+  const row = includeHidden
+    ? one('SELECT * FROM word_books WHERE id = ?', id)
+    : one('SELECT * FROM word_books WHERE id = ? AND visible = 1', id);
+  return mapWordBook(row, includeWords);
+}
+
+export function saveWordBook(book) {
+  const id = String(book.id || '').trim();
+  const name = String(book.name || '').trim();
+  if (!id || !name) {
+    throw new Error('word book id/name required');
+  }
+  const words = Array.isArray(book.words) ? book.words : [];
+  const wordsJson = JSON.stringify(words);
+  const existing = one('SELECT created_at FROM word_books WHERE id = ?', id);
+  const createdAt = existing?.created_at || now();
+  run(
+    `INSERT INTO word_books
+      (id, name, subtitle, description, source, words_json, word_count, visible, sort_order, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       name = excluded.name,
+       subtitle = excluded.subtitle,
+       description = excluded.description,
+       source = excluded.source,
+       words_json = excluded.words_json,
+       word_count = excluded.word_count,
+       visible = excluded.visible,
+       sort_order = excluded.sort_order,
+       updated_at = excluded.updated_at`,
+    id,
+    name,
+    String(book.subtitle || ''),
+    String(book.description || ''),
+    String(book.source || ''),
+    wordsJson,
+    words.length,
+    book.visible === false ? 0 : 1,
+    Number.isFinite(Number(book.sortOrder)) ? Math.trunc(Number(book.sortOrder)) : 0,
+    createdAt,
+    now()
+  );
+  return getWordBook(id, { includeHidden: true, includeWords: true });
+}
+
+export function deleteWordBook(id) {
+  return run('DELETE FROM word_books WHERE id = ?', id).changes > 0;
 }
 
 export function listUsers() {

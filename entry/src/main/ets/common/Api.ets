@@ -3,6 +3,7 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { API_BASE_URL } from './Config';
 import { ProgressPayload, ProgressSnapshot } from '../model/ProgressModel';
 import { RemoteVideo } from '../model/VideoModel';
+import { Word } from '../model/WordModel';
 
 /* ----------------------------- 响应结构 ----------------------------- */
 
@@ -44,6 +45,32 @@ interface AvatarEnvelope {
   code: number;
   message: string;
   data: AvatarPayload | null;
+}
+
+export interface RemoteWordBook {
+  id: string;
+  name: string;
+  subtitle: string;
+  description: string;
+  source: string;
+  wordCount: number;
+  words: Word[];
+}
+
+interface WordBookListPayload {
+  books: RemoteWordBook[];
+}
+
+interface WordBookListEnvelope {
+  code: number;
+  message: string;
+  data: WordBookListPayload | null;
+}
+
+export interface WordBookListResult {
+  ok: boolean;
+  message: string;
+  books: RemoteWordBook[];
 }
 
 export interface AuthResult {
@@ -115,7 +142,7 @@ function videoFail(message: string): VideoListResult {
 
 class Http {
   static async send(path: string, method: http.RequestMethod, body: string,
-    token: string): Promise<HttpReply> {
+    token: string, readTimeout: number = 15000): Promise<HttpReply> {
     const request = http.createHttp();
     try {
       const headers: Record<string, string> = {};
@@ -129,7 +156,7 @@ class Http {
         extraData: body,
         expectDataType: http.HttpDataType.STRING,
         connectTimeout: 8000,
-        readTimeout: 15000
+        readTimeout: readTimeout
       };
       const response = await request.request(API_BASE_URL + path, options);
       const reply: HttpReply = {
@@ -323,5 +350,77 @@ export class Api {
       return result;
     }
     return videoFail(envelope.message !== '' ? envelope.message : '获取视频列表失败');
+  }
+
+  // App 启动时拉取后台启用的全部词表（含单词）
+  static async fetchWordBooks(): Promise<WordBookListResult> {
+    const reply = await Http.send('/api/wordbooks/full', http.RequestMethod.GET, '', '', 30000);
+    if (reply.networkError) {
+      const failed: WordBookListResult = {
+        ok: false,
+        message: '无法连接服务器，使用内置词表',
+        books: []
+      };
+      return failed;
+    }
+    let envelope: WordBookListEnvelope = { code: -1, message: '', data: null };
+    try {
+      envelope = JSON.parse(reply.body) as WordBookListEnvelope;
+    } catch (err) {
+      const failed: WordBookListResult = {
+        ok: false,
+        message: `词表响应异常（HTTP ${reply.status}）`,
+        books: []
+      };
+      return failed;
+    }
+    if (envelope.code !== 0 || envelope.data === null) {
+      const failed: WordBookListResult = {
+        ok: false,
+        message: envelope.message !== '' ? envelope.message : '获取词表失败',
+        books: []
+      };
+      return failed;
+    }
+
+    const books: RemoteWordBook[] = [];
+    for (let b = 0; b < envelope.data.books.length; b++) {
+      const raw = envelope.data.books[b];
+      const words: Word[] = [];
+      for (let i = 0; i < raw.words.length; i++) {
+        const item = raw.words[i];
+        if (!item.word) {
+          continue;
+        }
+        const converted: Word = {
+          id: item.id || `${raw.id}-w${i + 1}`,
+          word: item.word,
+          phonetic: item.phonetic || '',
+          meaning: item.meaning || '',
+          example: item.example || '',
+          exampleCn: item.exampleCn || ''
+        };
+        words.push(converted);
+      }
+      if (words.length === 0) {
+        continue;
+      }
+      const book: RemoteWordBook = {
+        id: raw.id,
+        name: raw.name,
+        subtitle: raw.subtitle || `${words.length} 词`,
+        description: raw.description || '',
+        source: raw.source || '',
+        wordCount: raw.wordCount || words.length,
+        words
+      };
+      books.push(book);
+    }
+    const result: WordBookListResult = {
+      ok: true,
+      message: envelope.message,
+      books
+    };
+    return result;
   }
 }
