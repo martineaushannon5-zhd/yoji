@@ -31,20 +31,22 @@ npm start          # http://localhost:4173（仅静态页；登录需要 /api �
 
 ## 二、上传静态文件
 
+仓库根目录已经打好包：**`yoji-admin-site.zip`**（`index.html` 在压缩包根目录）。也可以自己 `npm run build` 后上传 `yoji-admin/out/`。
+
 推荐独立目录，避免覆盖原来的后端/代理文件：
 
 ```bash
 # 服务器
 mkdir -p /www/wwwroot/yoji-admin
+cd /www/wwwroot/yoji-admin
+unzip -o /path/to/yoji-admin-site.zip
+ls index.html _next
 
-# 本机项目根目录上传
-scp -r yoji-admin/out/* root@120.24.171.99:/www/wwwroot/yoji-admin/
-
-# 服务器确认
-ls /www/wwwroot/yoji-admin/index.html
+# 或者本机直接 scp
+scp yoji-admin-site.zip root@120.24.171.99:/www/wwwroot/yoji-admin/
 ```
 
-没有 SSH 权限时，用宝塔 **文件 → 上传**：把 `out/` 里的内容上传到 `/www/wwwroot/yoji-admin/`，确保 `index.html` 直接在该目录下。
+没有 SSH 权限时，用宝塔 **文件 → 上传**：把 `yoji-admin-site.zip` 传到 `/www/wwwroot/yoji-admin/` 并在宝塔里解压，确保 `index.html` 直接在该目录下。
 
 ## 三、宝塔配置
 
@@ -78,6 +80,7 @@ location / {
 
 # 后台 API：proxy_pass 末尾不要加 /，保留 /api 前缀
 location /api/ {
+    client_max_body_size 4m;
     proxy_pass http://127.0.0.1:3000;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
@@ -114,6 +117,14 @@ nginx -t && nginx -s reload
 - `server/src/app.js`（挂载 `/api/admin/login`、`/api/admin/stats`、`/api/admin/users`）
 - `server/src/db.js`（用户列表/删除、昵称回写）
 - `server/src/routes/progress.js`（昵称同步）
+- `server/src/progress.js`（v1.2.0 新字段）
+
+仓库根目录已经打包 **`yoji-server-update.zip`**（压缩包内为 `src/...`）。在服务器上解压到 Node 项目根目录即可：
+
+```bash
+cd /opt/yoji/server       # 换成你的实际 server 目录
+unzip -o /path/to/yoji-server-update.zip
+```
 
 上传后重启 Node（宝塔 PM2 或 `systemctl restart yoji-api`）。
 

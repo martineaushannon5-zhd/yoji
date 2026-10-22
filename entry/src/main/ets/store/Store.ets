@@ -414,7 +414,7 @@ export class Store {
     this.avatar = '';
   }
 
-  // 更新个人资料：昵称/性别/生日/头像（头像为应用沙箱内文件路径）
+  // 更新个人资料：昵称/性别/生日/头像（头像为服务器 URL 或本地沙箱路径）
   async updateProfile(nickname: string, gender: string, birthday: string, avatar: string): Promise<void> {
     this.nickname = nickname;
     this.gender = gender;

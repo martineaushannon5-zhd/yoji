@@ -71,7 +71,19 @@ ssh root@服务器IP "chown -R yoji:yoji /opt/yoji/media && chmod -R 755 /opt/yo
 
 > 视频目录结构必须和数据库里的链接一致：
 > `/media/videos/anxiety.mp4`、`/media/thumbs/video_thumb_anxiety.png`。
-> 如果换了文件名，用后台接口改 `videoUrl` / `thumbUrl` 即可。
+> **只上传文件不会自动出现在 App 里**，还要登记到数据库。上传后二选一：
+>
+> ```bash
+> # 方式 A：在服务器上扫描目录，自动按文件名登记新视频/同名封面
+> cd /opt/yoji/server && npm run sync-media
+>
+> # 方式 B：调后台扫描接口
+> curl -X POST https://你的域名/api/admin/videos/scan \
+>   -H "X-Admin-Token: 你的ADMIN_TOKEN"
+> ```
+>
+> 文件名会作为标题（`focus-talk.mp4` → `focus talk`），同目录下同名封面会自动匹配。
+> 也可以继续用后台 `POST /api/admin/videos` 手动指定标题、排序和链接。
 
 ### 4. 域名 + HTTPS
 
@@ -165,7 +177,8 @@ Authorization: Bearer <token>
 | POST | `/api/auth/register` | 注册 |
 | POST | `/api/auth/login` | 登录 |
 | GET | `/api/auth/me` | 当前用户 |
-| PATCH | `/api/auth/me` | 改昵称 / 头像 |
+| PATCH | `/api/auth/me` | 改昵称 / 头像地址 |
+| POST | `/api/auth/avatar` | 上传头像原始字节（JPG/PNG/WebP，≤2MB） |
 | POST | `/api/auth/logout` | 退出登录（旧 token 全部失效） |
 
 注册 / 登录请求：
@@ -191,6 +204,23 @@ Authorization: Bearer <token>
 ```
 
 账号规则：3–64 位字母、数字或 `_ . @ + -`；密码 6–72 位。账号不区分大小写。
+
+头像上传（App 直接把图片字节发上来，服务端按文件头识别格式并写入 `media/avatars/`）：
+
+```bash
+curl -X POST https://你的域名/api/auth/avatar \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/octet-stream" \
+  --data-binary @avatar.jpg
+```
+
+返回：
+
+```json
+{ "code": 0, "message": "头像已更新", "data": { "avatar": "/media/avatars/<userId>.jpg?v=..." } }
+```
+
+`users.avatar` 会同步更新，之后登录 / `GET /api/auth/me` 都会返回这个地址；App 用 `Api.resolveMediaUrl` 拼上域名。
 
 ### 2. 学习进度
 
@@ -310,6 +340,7 @@ grep ADMIN_TOKEN /opt/yoji/server/.env
 | DELETE | `/api/admin/users/:id` | Bearer JWT | 删除用户及其进度 |
 | GET | `/api/admin/ping` | X-Admin-Token | 验证运维令牌 |
 | GET | `/api/admin/videos` | X-Admin-Token | 全部视频（含隐藏） |
+| POST | `/api/admin/videos/scan` | X-Admin-Token | 扫描 `media/videos`，自动登记新视频 |
 | POST | `/api/admin/videos` | X-Admin-Token | 新增视频 |
 | PATCH | `/api/admin/videos/:id` | X-Admin-Token | 修改视频 |
 | DELETE | `/api/admin/videos/:id` | X-Admin-Token | 删除视频 |

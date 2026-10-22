@@ -1,7 +1,9 @@
 @echo off
 rem Build script: uses hvigor/node/jbr bundled with DevEco Studio
-set NODE_HOME=C:\Program Files\Huawei\DevEco Studio\tools\node
-set PATH=%NODE_HOME%;C:\Program Files\Huawei\DevEco Studio\jbr\bin;%PATH%
-set DEVECO_SDK_HOME=C:\Program Files\Huawei\DevEco Studio\sdk
+set "DEVECO_HOME=C:\Program Files\Huawei\huawei\DevEco Studio"
+if not exist "%DEVECO_HOME%\tools\node\node.exe" set "DEVECO_HOME=C:\Program Files\Huawei\DevEco Studio"
+set "NODE_HOME=%DEVECO_HOME%\tools\node"
+set "PATH=%NODE_HOME%;%DEVECO_HOME%\jbr\bin;%PATH%"
+set "DEVECO_SDK_HOME=%DEVECO_HOME%\sdk"
 cd /d %~dp0
-call "C:\Program Files\Huawei\DevEco Studio\tools\hvigor\bin\hvigorw.bat" --mode module -p module=entry@default -p product=default assembleHap --no-daemon
+call "%DEVECO_HOME%\tools\hvigor\bin\hvigorw.bat" --mode module -p module=entry@default -p product=default assembleHap --no-daemon

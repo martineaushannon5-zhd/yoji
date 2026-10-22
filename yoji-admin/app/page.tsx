@@ -109,7 +109,7 @@ export default function Home() {
           </h1>
 
           <p className="mt-7 max-w-xl text-[15px] leading-7 text-muted-foreground">
-            Yoji 背单词后台管理系统。管理员登录、数据大盘、用户管理与视频配置已接通，
+            Yoji 背单词后台管理系统。管理员登录、数据大盘与用户管理已接通，
             用一套安静的界面管理用户与学习进度。
           </p>
 
@@ -215,7 +215,7 @@ export default function Home() {
         </section>
 
         <footer className="mt-auto flex flex-col gap-2 border-t border-border pt-6 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <span>Yoji Admin · v0.1.0</span>
+          <span>Yoji Admin · v0.2.0</span>
           <span className="flex items-center gap-2">
             <Type className="size-3" />
             Next.js 14 · Static Export · Tailwind · Shadcn

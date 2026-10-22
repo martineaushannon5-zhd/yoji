@@ -9,6 +9,7 @@ import {
   updateVideo
 } from '../db.js';
 import { asyncRoute, ErrorCode, fail, ok } from '../http.js';
+import { syncMedia } from '../media-sync.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAdmin);
@@ -76,6 +77,12 @@ adminRouter.get(
 adminRouter.get(
   '/videos',
   asyncRoute(async (req, res) => ok(res, { videos: listVideos({ includeHidden: true }) }))
+);
+
+// 扫描 media/videos 与 media/thumbs，把新上传的文件登记为视频记录
+adminRouter.post(
+  '/videos/scan',
+  asyncRoute(async (req, res) => ok(res, syncMedia(), '媒体扫描完成'))
 );
 
 adminRouter.post(

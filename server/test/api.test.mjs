@@ -289,6 +289,65 @@ test('视频：公开列表 + 后台增删改', async () => {
   assert.equal(removed.status, 200);
 });
 
+test('媒体扫描：新上传的视频/封面自动登记，重复扫描不重复插入', async () => {
+  const videoDir = path.join(mediaDir, 'videos');
+  const thumbDir = path.join(mediaDir, 'thumbs');
+  fs.mkdirSync(videoDir, { recursive: true });
+  fs.mkdirSync(thumbDir, { recursive: true });
+  fs.writeFileSync(path.join(videoDir, 'focus-talk.mp4'), Buffer.from('fake-mp4'));
+  fs.writeFileSync(path.join(thumbDir, 'focus-talk.png'), Buffer.from('fake-png'));
+
+  const scan = await api('/api/admin/videos/scan', {
+    method: 'POST',
+    admin: state.adminToken
+  });
+  assert.equal(scan.status, 200);
+  assert.equal(scan.body.data.created, 1);
+  assert.equal(scan.body.data.updated, 0);
+
+  const list = await api('/api/videos');
+  const created = list.body.data.videos.find((video) => video.id === 'focus-talk');
+  assert.ok(created);
+  assert.equal(created.videoUrl, '/media/videos/focus-talk.mp4');
+  assert.equal(created.thumbUrl, '/media/thumbs/focus-talk.png');
+  assert.equal(created.title, 'focus talk');
+
+  const again = await api('/api/admin/videos/scan', {
+    method: 'POST',
+    admin: state.adminToken
+  });
+  assert.equal(again.status, 200);
+  assert.equal(again.body.data.created, 0);
+});
+
+test('头像上传：原始图片字节写入媒体目录并回写用户头像', async () => {
+  // 最小 PNG 文件头（服务端只做文件头识别，不做图片解码）
+  const png = Buffer.from(
+    '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360000000020001e221bc330000000049454e44ae426082',
+    'hex'
+  );
+  const upload = await fetch(`${baseUrl}/api/auth/avatar`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/octet-stream',
+      Authorization: `Bearer ${state.token}`
+    },
+    body: png
+  });
+  const body = await upload.json();
+  assert.equal(upload.status, 200);
+  assert.equal(body.code, 0);
+  assert.ok(body.data.avatar.startsWith('/media/avatars/'));
+
+  const image = await fetch(`${baseUrl}${body.data.avatar}`);
+  assert.equal(image.status, 200);
+  assert.equal(image.headers.get('content-type'), 'image/png');
+
+  const me = await api('/api/auth/me', { token: state.token });
+  assert.equal(me.status, 200);
+  assert.equal(me.body.data.avatar, body.data.avatar);
+});
+
 test('管理后台：登录、统计、用户列表、删除', async () => {
   const denied = await api('/api/admin/login', {
     method: 'POST',

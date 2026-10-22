@@ -3,6 +3,8 @@ node_modules/
 data/
 media/videos/*
 media/thumbs/*
+media/avatars/*
 !media/videos/.gitkeep
 !media/thumbs/.gitkeep
+!media/avatars/.gitkeep
 *.log

@@ -49,7 +49,7 @@ log "3/8 创建运行用户与目录"
 if ! id -u yoji >/dev/null 2>&1; then
   useradd --system --home "$APP_DIR" --shell /usr/sbin/nologin yoji
 fi
-mkdir -p "$DATA_DIR" "$MEDIA_DIR/videos" "$MEDIA_DIR/thumbs" "$BACKUP_DIR"
+mkdir -p "$DATA_DIR" "$MEDIA_DIR/videos" "$MEDIA_DIR/thumbs" "$MEDIA_DIR/avatars" "$BACKUP_DIR"
 chown -R yoji:yoji "$DATA_DIR" "$MEDIA_DIR" "$BACKUP_DIR"
 chmod 750 "$DATA_DIR" "$BACKUP_DIR"
 chmod -R 755 "$MEDIA_DIR"

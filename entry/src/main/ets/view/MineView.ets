@@ -1,6 +1,7 @@
 import { promptAction, router } from '@kit.ArkUI';
 import { Store } from '../store/Store';
 import { Theme } from '../common/Theme';
+import { Api } from '../common/Api';
 import { CloudSync } from '../common/CloudSync';
 import { ThemeToggle } from './ThemeToggle';
 import { getBook } from '../data/WordData';
@@ -137,6 +138,9 @@ export struct MineView {
     const value = this.avatar;
     if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('file://')) {
       return value;
+    }
+    if (value.startsWith('/')) {
+      return Api.resolveMediaUrl(value);
     }
     return `file://${value}`;
   }

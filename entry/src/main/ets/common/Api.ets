@@ -36,6 +36,16 @@ interface VideoListEnvelope {
   data: VideoListPayload | null;
 }
 
+interface AvatarPayload {
+  avatar: string;
+}
+
+interface AvatarEnvelope {
+  code: number;
+  message: string;
+  data: AvatarPayload | null;
+}
+
 export interface AuthResult {
   ok: boolean;
   message: string;
@@ -52,6 +62,12 @@ export interface VideoListResult {
   ok: boolean;
   message: string;
   videos: RemoteVideo[];
+}
+
+export interface AvatarResult {
+  ok: boolean;
+  message: string;
+  avatar: string;
 }
 
 /* ----------------------------- 请求结构 ----------------------------- */
@@ -131,6 +147,40 @@ class Http {
       request.destroy();
     }
   }
+
+  // 上传原始图片字节（头像）：不走 JSON，Content-Type 固定 octet-stream
+  static async sendRaw(path: string, data: ArrayBuffer, token: string): Promise<HttpReply> {
+    const request = http.createHttp();
+    try {
+      const headers: Record<string, string> = {};
+      headers['Content-Type'] = 'application/octet-stream';
+      if (token !== '') {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const options: http.HttpRequestOptions = {
+        method: http.RequestMethod.POST,
+        header: headers,
+        extraData: data,
+        expectDataType: http.HttpDataType.STRING,
+        connectTimeout: 15000,
+        readTimeout: 30000
+      };
+      const response = await request.request(API_BASE_URL + path, options);
+      const reply: HttpReply = {
+        status: response.responseCode,
+        body: response.result as string,
+        networkError: false
+      };
+      return reply;
+    } catch (err) {
+      const error = err as BusinessError;
+      console.error(`[Api] POST ${API_BASE_URL + path} 上传失败 code=${error.code} message=${error.message}`);
+      const reply: HttpReply = { status: 0, body: '', networkError: true };
+      return reply;
+    } finally {
+      request.destroy();
+    }
+  }
 }
 
 /* ------------------------------- API -------------------------------- */
@@ -179,6 +229,36 @@ export class Api {
       return result;
     }
     return authFail(envelope.message !== '' ? envelope.message : fallback);
+  }
+
+  // 头像上传：读取本地图片字节后以 octet-stream 发给后端，返回服务器上的头像地址
+  static async uploadAvatar(token: string, data: ArrayBuffer): Promise<AvatarResult> {
+    const reply = await Http.sendRaw('/api/auth/avatar', data, token);
+    if (reply.networkError) {
+      const failed: AvatarResult = { ok: false, message: networkErrorText(), avatar: '' };
+      return failed;
+    }
+    let envelope: AvatarEnvelope = { code: -1, message: '', data: null };
+    try {
+      envelope = JSON.parse(reply.body) as AvatarEnvelope;
+    } catch (err) {
+      const failed: AvatarResult = {
+        ok: false,
+        message: `服务器响应异常（HTTP ${reply.status}）`,
+        avatar: ''
+      };
+      return failed;
+    }
+    if (envelope.code === 0 && envelope.data !== null) {
+      const result: AvatarResult = { ok: true, message: envelope.message, avatar: envelope.data.avatar };
+      return result;
+    }
+    const failed: AvatarResult = {
+      ok: false,
+      message: envelope.message !== '' ? envelope.message : '头像上传失败',
+      avatar: ''
+    };
+    return failed;
   }
 
   static async logout(token: string): Promise<boolean> {

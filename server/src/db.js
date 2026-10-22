@@ -150,6 +150,10 @@ export function updateUserNickname(userId, nickname) {
   run('UPDATE users SET nickname = ?, updated_at = ? WHERE id = ?', nickname, now(), userId);
 }
 
+export function updateUserAvatar(userId, avatar) {
+  run('UPDATE users SET avatar = ?, updated_at = ? WHERE id = ?', avatar, now(), userId);
+}
+
 export function bumpTokenVersion(userId) {
   run(
     'UPDATE users SET token_version = token_version + 1, updated_at = ? WHERE id = ?',

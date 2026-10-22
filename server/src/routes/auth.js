@@ -1,5 +1,7 @@
 import crypto from 'node:crypto';
-import { Router } from 'express';
+import fs from 'node:fs';
+import path from 'node:path';
+import express, { Router } from 'express';
 import {
   dummyPasswordHash,
   hashPassword,
@@ -12,8 +14,10 @@ import {
   createUser,
   findUserByAccount,
   findUserById,
+  updateUserAvatar,
   updateUserProfile
 } from '../db.js';
+import { config } from '../config.js';
 import { asyncRoute, ErrorCode, fail, ok } from '../http.js';
 
 export const authRouter = Router();
@@ -151,6 +155,53 @@ authRouter.patch(
       nickname: user.nickname,
       avatar: user.avatar
     }, '已更新');
+  })
+);
+
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+
+function detectImage(buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 12 || buffer.length > AVATAR_MAX_BYTES) {
+    return null;
+  }
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return { ext: 'jpg', mime: 'image/jpeg' };
+  }
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
+    return { ext: 'png', mime: 'image/png' };
+  }
+  if (
+    buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+    buffer.subarray(8, 12).toString('ascii') === 'WEBP'
+  ) {
+    return { ext: 'webp', mime: 'image/webp' };
+  }
+  return null;
+}
+
+// 头像上传：App 直接发原始图片字节（application/octet-stream），服务端按文件头识别格式
+authRouter.post(
+  '/avatar',
+  requireAuth,
+  express.raw({
+    type: ['image/jpeg', 'image/png', 'image/webp', 'application/octet-stream'],
+    limit: '2mb'
+  }),
+  asyncRoute(async (req, res) => {
+    const type = detectImage(req.body);
+    if (!type) {
+      return fail(res, 400, ErrorCode.BAD_REQUEST, '头像仅支持 2MB 以内的 JPG/PNG/WebP');
+    }
+
+    const dir = path.join(config.mediaDir, 'avatars');
+    fs.mkdirSync(dir, { recursive: true });
+    const filename = `${req.user.id}.${type.ext}`;
+    fs.writeFileSync(path.join(dir, filename), req.body);
+
+    // 带 v 参数避免客户端/浏览器缓存旧头像
+    const avatar = `${config.publicMediaPrefix}/avatars/${filename}?v=${Date.now()}`;
+    updateUserAvatar(req.user.id, avatar);
+    return ok(res, { avatar }, '头像已更新');
   })
 );
 

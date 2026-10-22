@@ -95,15 +95,36 @@ export class CloudSync {
     }
   }
 
-  // 退出登录：先尽量把最新进度推上去，再让服务端作废旧 token
-  static async logout(): Promise<void> {
+  // 退出登录前先把所有待推送/正在推送的进度落云端，避免刚收藏就退出导致丢失
+  static async flush(): Promise<void> {
     const store: Store = Store.get();
+    if (!store.isLoggedIn || store.token === '') {
+      return;
+    }
     if (CloudSync.timer >= 0) {
       clearTimeout(CloudSync.timer);
       CloudSync.timer = -1;
     }
-    if (store.token !== '') {
+    // 等待正在进行的请求结束，再补一次最新快照
+    let guard = 0;
+    while (CloudSync.pushing && guard < 40) {
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 50);
+      });
+      guard += 1;
+    }
+    await CloudSync.pushNow();
+    if (CloudSync.dirty) {
+      CloudSync.dirty = false;
       await CloudSync.pushNow();
+    }
+  }
+
+  // 退出登录：先尽量把最新进度推上去，再让服务端作废旧 token
+  static async logout(): Promise<void> {
+    const store: Store = Store.get();
+    if (store.token !== '') {
+      await CloudSync.flush();
       await Api.logout(store.token);
     }
     await store.logout();

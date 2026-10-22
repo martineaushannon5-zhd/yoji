@@ -2,6 +2,7 @@ import { promptAction, router } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
 import { fileIo as fs } from '@kit.CoreFileKit';
+import { Api, AvatarResult } from '../common/Api';
 import { Store } from '../store/Store';
 import { Theme } from '../common/Theme';
 
@@ -69,7 +70,54 @@ struct ProfileEditPage {
     if (this.avatar.startsWith('http://') || this.avatar.startsWith('https://') || this.avatar.startsWith('file://')) {
       return this.avatar;
     }
+    if (this.avatar.startsWith('/')) {
+      return Api.resolveMediaUrl(this.avatar);
+    }
     return `file://${this.avatar}`;
+  }
+
+  // 选完头像后先上传到服务器，返回服务器 URL；失败返回空串
+  private async uploadAvatarIfNeeded(): Promise<string> {
+    if (this.avatar === '' || this.avatar.startsWith('http://') || this.avatar.startsWith('https://')) {
+      return this.avatar;
+    }
+    // 后端返回的相对地址（/media/avatars/...）已经是服务器头像，不需要再上传
+    if (this.avatar.startsWith('/')) {
+      return this.avatar;
+    }
+    if (this.store.token === '') {
+      promptAction.showToast({ message: '请先登录后再上传头像' });
+      return '';
+    }
+    const localPath = this.avatar.startsWith('file://')
+      ? this.avatar.substring(7)
+      : this.avatar;
+    try {
+      const stat = fs.statSync(localPath);
+      if (stat.size <= 0 || stat.size > 2 * 1024 * 1024) {
+        promptAction.showToast({ message: '头像需小于 2MB' });
+        return '';
+      }
+      const file = fs.openSync(localPath, fs.OpenMode.READ_ONLY);
+      const buffer = new ArrayBuffer(stat.size);
+      const read = fs.readSync(file.fd, buffer);
+      fs.closeSync(file);
+      if (read <= 0) {
+        promptAction.showToast({ message: '读取头像失败' });
+        return '';
+      }
+      const bytes: ArrayBuffer = read === stat.size ? buffer : buffer.slice(0, read);
+      const result: AvatarResult = await Api.uploadAvatar(this.store.token, bytes);
+      if (!result.ok) {
+        promptAction.showToast({ message: result.message });
+        return '';
+      }
+      return result.avatar;
+    } catch (err) {
+      console.error(`uploadAvatar failed: ${err}`);
+      promptAction.showToast({ message: '头像上传失败，请重试' });
+      return '';
+    }
   }
 
   // 保存资料：昵称非空校验后写回 Store
@@ -83,6 +131,13 @@ struct ProfileEditPage {
       return;
     }
     this.saving = true;
+    const avatar = await this.uploadAvatarIfNeeded();
+    if (this.avatar !== '' && avatar === '') {
+      // 选过头像但上传失败：不保存半成品资料
+      this.saving = false;
+      return;
+    }
+    this.avatar = avatar;
     await this.store.updateProfile(name, this.gender, this.birthday, this.avatar);
     this.saving = false;
     promptAction.showToast({ message: '资料已保存' });

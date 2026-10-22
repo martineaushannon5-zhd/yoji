@@ -11,6 +11,7 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "seed": "node scripts/seed.js",
+    "sync-media": "node scripts/sync-media.js",
     "test": "node --test test/api.test.mjs"
   },
   "dependencies": {
