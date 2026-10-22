@@ -1,5 +1,5 @@
 import { common } from '@kit.AbilityKit';
-import { router } from '@kit.ArkUI';
+import { router, curves } from '@kit.ArkUI';
 import { Store } from '../store/Store';
 import { Theme } from '../common/Theme';
 import { MineView } from '../view/MineView';
@@ -59,6 +59,9 @@ struct Index {
   // 奖杯入场缩放与摆动角度（keyframeAnimateTo 驱动）
   @State trophyScale: number = 0;
   @State trophyRotate: number = 0;
+  // 底部导航栏交互动效：拖拽时原地轻微形变（位置固定不动）
+  @State tabScaleX: number = 1;
+  @State tabScaleY: number = 1;
 
   aboutToAppear(): void {
     this.syncFromStore();
@@ -307,6 +310,26 @@ struct Index {
     .translate({ x: 0, y: this.tabBarHidden ? 120 : 0 })
     .opacity(this.tabBarHidden ? 0 : 1)
     .animation({ duration: 320, curve: Curve.Friction })
+    // 以下形变属性置于 .animation 之后，避免被隐式动画拖慢跟手，改由 animateTo 精确控制
+    // 拖拽：仅围绕中心原地拉伸/压扁形变，位置（中心）保持固定，点击不再触发果冻回弹
+    .scale({ x: this.tabScaleX, y: this.tabScaleY })
+    .gesture(
+      PanGesture({ direction: PanDirection.Horizontal, distance: 5 })
+        .onActionUpdate((event: GestureEvent) => {
+          // 仅根据拖拽距离做克制的形变，不改变导航栏位置
+          const clamped = Math.max(-48, Math.min(48, event.offsetX));
+          const t = Math.abs(clamped) / 48;
+          this.tabScaleX = 1 + t * 0.05;
+          this.tabScaleY = 1 - t * 0.05;
+        })
+        .onActionEnd(() => {
+          // 松手后弹簧回位
+          animateTo({ duration: 400, curve: curves.springMotion(0.38, 0.6) }, () => {
+            this.tabScaleX = 1;
+            this.tabScaleY = 1;
+          });
+        })
+    )
   }
 
   // 当前词库与学习进度卡片：液态玻璃 + 高光边缘 + 错峰入场
