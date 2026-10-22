@@ -2,6 +2,9 @@
 
 Yoji 背单词项目的后台管理系统。**阶段一 ~ 阶段六已完成**：静态导出、Axios + SWR、管理员登录、路由守卫、Sidebar/Header、数据大盘、用户管理（搜索/分页/删除）。
 
+> 线上地址：<https://yoji.zhdstudy.cyou/>（2026-10-22 已部署）
+> 管理员账号 `admin`，密码在服务器 `/www/wwwroot/yoji/server/.env` 的 `ADMIN_TOKEN`。
+
 > 前端是纯静态导出，不跑 Next.js 服务端，也不在 Next.js 里连数据库。
 > 所有数据都通过 Node API（`/api/admin/*`）获取。
 

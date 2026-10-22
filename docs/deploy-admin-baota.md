@@ -1,8 +1,13 @@
 # 把 Yoji Admin 部署到 https://yoji.zhdstudy.cyou/
 
-> 目标：`https://yoji.zhdstudy.cyou/` 打开后台，登录后能看数据大盘和用户管理。
+> **2026-10-22 已部署完成。**
 >
-> 当前域名根路径返回 `{"code":1007,"message":"接口不存在"}`，说明 Nginx 把 `/` 也代理给 Node 了，需要把根路径改成静态目录，并保留 `/api` 反代。
+> - 站点根目录：`/www/wwwroot/yoji-admin`
+> - Nginx 配置：`/www/server/panel/vhost/nginx/node_yoji_project.conf`
+> - `/api/` → `http://127.0.0.1:3000`，`/media/` → `/www/wwwroot/yoji/server/media/`
+> - 线上地址：<https://yoji.zhdstudy.cyou/>
+>
+> 下面是可复现的部署步骤，后续换服务器或重装时使用。
 
 ## 一、构建产物
 
@@ -92,7 +97,7 @@ location /api/ {
 
 # 视频 / 封面
 location /media/ {
-    alias /opt/yoji/media/;
+    alias /www/wwwroot/yoji/server/media/;
     sendfile on;
     add_header Accept-Ranges bytes always;
     add_header Cache-Control "public, max-age=604800" always;
@@ -122,11 +127,16 @@ nginx -t && nginx -s reload
 仓库根目录已经打包 **`yoji-server-update.zip`**（压缩包内为 `src/...`）。在服务器上解压到 Node 项目根目录即可：
 
 ```bash
-cd /opt/yoji/server       # 换成你的实际 server 目录
+cd /www/wwwroot/yoji/server
 unzip -o /path/to/yoji-server-update.zip
 ```
 
-上传后重启 Node（宝塔 PM2 或 `systemctl restart yoji-api`）。
+上传后重启 Node：
+
+```bash
+export PATH=/www/server/nodejs/v24.22.0/bin:$PATH
+pm2 restart yoji_project --update-env
+```
 
 `.env` 确认：
 
