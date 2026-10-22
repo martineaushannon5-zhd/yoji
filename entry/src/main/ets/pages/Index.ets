@@ -1,5 +1,5 @@
 import { common } from '@kit.AbilityKit';
-import { router } from '@kit.ArkUI';
+import { router, curves } from '@kit.ArkUI';
 import { Store } from '../store/Store';
 import { Theme } from '../common/Theme';
 import { MineView } from '../view/MineView';
@@ -59,6 +59,12 @@ struct Index {
   // 奖杯入场缩放与摆动角度（keyframeAnimateTo 驱动）
   @State trophyScale: number = 0;
   @State trophyRotate: number = 0;
+  // 底部导航栏交互动效：拖拽时原地轻微形变（位置固定不动）
+  @State tabScaleX: number = 1;
+  @State tabScaleY: number = 1;
+  // 悬浮胶囊拖拽：拖拽中的额外位移与拖拽标记（拖拽时关闭弹簧动画以实时跟手）
+  @State capsuleDragX: number = 0;
+  @State capsuleDragging: boolean = false;
 
   aboutToAppear(): void {
     this.syncFromStore();
@@ -104,6 +110,22 @@ struct Index {
     } else if (dy < -6 && this.tabBarHidden) {
       this.tabBarHidden = false;
     }
+  }
+
+  // 切换到指定标签页（点击与拖拽胶囊共用）：切回“今日要记”时重播入场动画，并复位滚动/导航栏状态
+  private selectTab(idx: number): void {
+    if (idx === this.activeTab) {
+      return;
+    }
+    if (idx === 0) {
+      this.homeEnter = false;
+      setTimeout(() => {
+        this.homeEnter = true;
+      }, 80);
+    }
+    this.activeTab = idx;
+    this.lastScrollY = 0;
+    this.tabBarHidden = false;
   }
 
   // 从 Store 同步首页展示数据（初始化与 tick 变化时调用）
@@ -250,10 +272,59 @@ struct Index {
     Stack({ alignContent: Alignment.Top }) {
       // 玻璃高光：胶囊顶部受光边缘（深色下减弱高光）
       this.GlassHighlight('56%')
+      // 悬浮选中指示胶囊：透明液态玻璃质感，随选中项平滑滞动到对应位置
+      Column()
+        .width(80)
+        .height(48)
+        .borderRadius(24)
+        .backgroundColor(Theme.accentGlass(this.isDark))
+        .backgroundBlurStyle(BlurStyle.Thin)
+        .border({ width: 1, color: Theme.accentGlassBorder(this.isDark) })
+        .shadow({
+          radius: 10,
+          color: this.isDark ? 'rgba(123,147,255,0.28)' : 'rgba(61,90,241,0.22)',
+          offsetX: 0,
+          offsetY: 3
+        })
+        // 基准位置：对齐第一个标签胶囊（行内边距 6 + 居中外框内缩 4）
+        .position({ x: 10, y: 6 })
+        // 每个标签宽 88，按选中索引横向平移，并叠加拖拽位移
+        .translate({ x: 88 * this.activeTab + this.capsuleDragX, y: 0 })
+        // 拖拽中关闭动画以实时跟手，松手后用弹簧曲线吸附到最近标签
+        .animation(this.capsuleDragging
+          ? { duration: 0, curve: Curve.Linear }
+          : { duration: 420, curve: curves.springMotion(0.42, 0.72) })
+        .gesture(
+          PanGesture({ direction: PanDirection.Horizontal, distance: 3 })
+            .onActionStart(() => {
+              this.capsuleDragging = true;
+            })
+            .onActionUpdate((event: GestureEvent) => {
+              const base = 88 * this.activeTab;
+              const max = 88 * (TABS.length - 1);
+              let target = base + event.offsetX;
+              // 超出两端时加橡皮筋阻尼
+              if (target < 0) {
+                target = target * 0.35;
+              } else if (target > max) {
+                target = max + (target - max) * 0.35;
+              }
+              this.capsuleDragX = target - base;
+            })
+            .onActionEnd(() => {
+              const current = 88 * this.activeTab + this.capsuleDragX;
+              let idx = Math.round(current / 88);
+              idx = Math.max(0, Math.min(TABS.length - 1, idx));
+              // 先退出拖拽态，使吸附以弹簧动画过渡
+              this.capsuleDragging = false;
+              this.capsuleDragX = 0;
+              this.selectTab(idx);
+            })
+        )
       Row() {
         ForEach(TABS, (item: TabItem, idx: number) => {
           Column() {
-            // 选中态胶囊：图标 + 文字
+            // 图标 + 文字（选中态由悬浮胶囊统一指示，此处不再单独铺底色）
             Column() {
               SymbolGlyph(item.icon)
                 .fontSize(22)
@@ -271,29 +342,22 @@ struct Index {
                 .margin({ top: 3 })
                 .animation({ duration: 200, curve: Curve.EaseOut })
             }
-            .padding({ top: 6, bottom: 6, left: 14, right: 14 })
-            .borderRadius(35)
-            .backgroundColor(this.activeTab === idx ? Theme.accentSoft(this.isDark) : Color.Transparent)
-            .animation({ duration: 200, curve: Curve.EaseOut })
+            .width(80)
+            .height(48)
+            .justifyContent(FlexAlign.Center)
           }
           .width(88)
           .justifyContent(FlexAlign.Center)
+          // 透明命中：不阻挡位于下层的悬浮胶囊接收拖拽手势（点击仍正常切页）
+          .hitTestBehavior(HitTestMode.Transparent)
           .onClick(() => {
-            // 切回“今日要记”时重播模块入场动画
-            if (idx === 0 && this.activeTab !== 0) {
-              this.homeEnter = false;
-              setTimeout(() => {
-                this.homeEnter = true;
-              }, 80);
-            }
-            this.activeTab = idx;
-            // 切换视图后回到顶部，导航栏恢复显示
-            this.lastScrollY = 0;
-            this.tabBarHidden = false;
+            this.selectTab(idx);
           })
         }, (item: TabItem) => item.label)
       }
       .padding({ top: 6, bottom: 6, left: 6, right: 6 })
+      // 透明命中：允许位于 Row 之下的悬浮胶囊接收拖拽手势
+      .hitTestBehavior(HitTestMode.Transparent)
     }
     // 玻璃质感：半透明底 + 背景模糊 + 高光描边（深色下为深色玻璃）
     .backgroundColor(Theme.glass(this.isDark))
@@ -307,6 +371,26 @@ struct Index {
     .translate({ x: 0, y: this.tabBarHidden ? 120 : 0 })
     .opacity(this.tabBarHidden ? 0 : 1)
     .animation({ duration: 320, curve: Curve.Friction })
+    // 以下形变属性置于 .animation 之后，避免被隐式动画拖慢跟手，改由 animateTo 精确控制
+    // 拖拽：仅围绕中心原地拉伸/压扁形变，位置（中心）保持固定，点击不再触发果冻回弹
+    .scale({ x: this.tabScaleX, y: this.tabScaleY })
+    .gesture(
+      PanGesture({ direction: PanDirection.Horizontal, distance: 5 })
+        .onActionUpdate((event: GestureEvent) => {
+          // 仅根据拖拽距离做克制的形变，不改变导航栏位置
+          const clamped = Math.max(-48, Math.min(48, event.offsetX));
+          const t = Math.abs(clamped) / 48;
+          this.tabScaleX = 1 + t * 0.05;
+          this.tabScaleY = 1 - t * 0.05;
+        })
+        .onActionEnd(() => {
+          // 松手后弹簧回位
+          animateTo({ duration: 400, curve: curves.springMotion(0.38, 0.6) }, () => {
+            this.tabScaleX = 1;
+            this.tabScaleY = 1;
+          });
+        })
+    )
   }
 
   // 当前词库与学习进度卡片：液态玻璃 + 高光边缘 + 错峰入场
