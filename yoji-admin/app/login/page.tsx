@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Loader2, LockKeyhole } from "lucide-react";
 
-import { api, getApiErrorMessage, TOKEN_KEY } from "@/lib/axios";
+import { api, ACCOUNT_KEY, getApiErrorMessage, TOKEN_KEY } from "@/lib/axios";
 import type { AdminLoginPayload } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +53,7 @@ export default function LoginPage() {
         return;
       }
       window.localStorage.setItem(TOKEN_KEY, payload.data.token);
+      window.localStorage.setItem(ACCOUNT_KEY, payload.data.account);
       router.replace("/dashboard");
     } catch (err) {
       setError(getApiErrorMessage(err));
@@ -120,8 +121,8 @@ export default function LoginPage() {
             </div>
             <h2 className="mt-5 font-serif text-3xl tracking-tight text-ink">管理员登录</h2>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              使用服务器 <code className="rounded bg-muted px-1.5 py-0.5 text-[12px]">.env</code>{" "}
-              中的管理员账号与令牌进入。
+              使用管理员账号进入；测试账号 <span className="text-ink">hans / zhd</span>，密码{" "}
+              <span className="text-ink">123456</span>。
             </p>
           </div>
 
@@ -181,7 +182,7 @@ export default function LoginPage() {
           </form>
 
           <p className="mt-6 text-center text-[11px] leading-5 text-muted-foreground">
-            账号默认 <span className="text-ink">admin</span>；密码为服务器{" "}
+            默认超级管理员 <span className="text-ink">admin</span>，密码为服务器{" "}
             <code className="rounded bg-muted px-1 py-0.5">ADMIN_TOKEN</code>
           </p>
         </div>

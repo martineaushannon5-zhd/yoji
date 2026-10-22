@@ -322,10 +322,15 @@ PUT /api/progress
 
 后台有两种鉴权方式，互不混用：
 
-1. **管理后台（Yoji Admin）**：`POST /api/admin/login` 用管理员账号 + `ADMIN_TOKEN` 换 JWT，之后带 `Authorization: Bearer <token>` 访问统计/用户接口。
-2. **视频运维脚本**：继续使用 `X-Admin-Token: <ADMIN_TOKEN>`，方便 curl 直接改视频。
+1. **管理后台（Yoji Admin）**：`POST /api/admin/login` 用管理员账号 + 密码换 JWT，之后带 `Authorization: Bearer <token>` 访问统计/用户/视频接口。
+2. **视频运维脚本**：也可以继续使用 `X-Admin-Token: <ADMIN_TOKEN>`，方便 curl 直接改视频。
 
-管理员账号默认 `admin`（`ADMIN_ACCOUNT` 可改），**登录密码就是 `ADMIN_TOKEN`**。令牌在 `/opt/yoji/server/.env`：
+管理员账号：
+
+- 超级管理员：`admin`，密码就是 `ADMIN_TOKEN`；
+- 内置测试管理员：`hans / 123456`、`zhd / 123456`（首次启动自动写入 admins 表，全部权限）。
+
+令牌在 `/opt/yoji/server/.env`：
 
 ```bash
 grep ADMIN_ACCOUNT /opt/yoji/server/.env
@@ -339,9 +344,10 @@ grep ADMIN_TOKEN /opt/yoji/server/.env
 | GET | `/api/admin/users` | Bearer JWT | 用户列表，支持 `search/page/pageSize` |
 | DELETE | `/api/admin/users/:id` | Bearer JWT | 删除用户及其进度 |
 | GET | `/api/admin/ping` | X-Admin-Token | 验证运维令牌 |
-| GET | `/api/admin/videos` | X-Admin-Token | 全部视频（含隐藏） |
-| POST | `/api/admin/videos/scan` | X-Admin-Token | 扫描 `media/videos`，自动登记新视频 |
-| POST | `/api/admin/videos` | X-Admin-Token | 新增视频 |
+| GET | `/api/admin/videos` | JWT / X-Admin-Token | 全部视频（含隐藏） |
+| POST | `/api/admin/videos/upload` | JWT / X-Admin-Token | multipart 上传视频 + 封面并建记录 |
+| POST | `/api/admin/videos/scan` | JWT / X-Admin-Token | 扫描 `media/videos`，自动登记新视频 |
+| POST | `/api/admin/videos` | JWT / X-Admin-Token | 新增视频 |
 | PATCH | `/api/admin/videos/:id` | X-Admin-Token | 修改视频 |
 | DELETE | `/api/admin/videos/:id` | X-Admin-Token | 删除视频 |
 

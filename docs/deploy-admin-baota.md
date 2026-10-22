@@ -85,7 +85,9 @@ location / {
 
 # 后台 API：proxy_pass 末尾不要加 /，保留 /api 前缀
 location /api/ {
-    client_max_body_size 4m;
+    client_max_body_size 1024m;
+    client_body_timeout 3600s;
+    proxy_request_buffering off;
     proxy_pass http://127.0.0.1:3000;
     proxy_http_version 1.1;
     proxy_set_header Host $host;

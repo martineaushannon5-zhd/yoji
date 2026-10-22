@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { config } from './config.js';
-import { findUserById } from './db.js';
+import { findAdminByAccount, findUserById } from './db.js';
 import { ErrorCode, fail } from './http.js';
 
 export function hashPassword(password) {
@@ -81,21 +81,38 @@ export function requireAdmin(req, res, next) {
 }
 
 /**
- * 管理后台登录：账号固定为 ADMIN_ACCOUNT，密码为 ADMIN_TOKEN。
- * 两者都用常量时间比较，避免从响应时间推断。
+ * 管理后台登录：
+ * 1) 兼容原来的 admin + ADMIN_TOKEN；
+ * 2) 支持 admins 表里的账号（hans / zhd 等，bcrypt 密码）。
+ * 返回管理员信息，失败返回 null。
  */
-export function verifyAdminCredentials(account, password) {
-  if (!config.adminToken) {
-    return false;
+export async function verifyAdminCredentials(account, password) {
+  if (typeof account !== 'string' || typeof password !== 'string' || !account || !password) {
+    return null;
   }
-  const accountOk = safeEqual(account, config.adminAccount);
-  const passwordOk = safeEqual(password, config.adminToken);
-  return accountOk && passwordOk;
+  if (config.adminToken) {
+    const accountOk = safeEqual(account, config.adminAccount);
+    const passwordOk = safeEqual(password, config.adminToken);
+    if (accountOk && passwordOk) {
+      return { id: 'env-admin', account: config.adminAccount };
+    }
+  }
+  const admin = findAdminByAccount(account.toLowerCase());
+  if (!admin) {
+    // 账号不存在时也做一次 bcrypt 比对，避免用响应时间枚举管理员账号
+    await verifyPassword(password, dummyPasswordHash);
+    return null;
+  }
+  const ok = await verifyPassword(password, admin.passwordHash);
+  if (!ok) {
+    return null;
+  }
+  return { id: admin.id, account: admin.account };
 }
 
-export function signAdminToken() {
+export function signAdminToken(admin) {
   return jwt.sign(
-    { sub: 'admin', role: 'admin' },
+    { sub: admin.id, role: 'admin', account: admin.account },
     config.jwtSecret,
     { expiresIn: config.adminJwtTtl, algorithm: 'HS256' }
   );
@@ -119,9 +136,17 @@ export function requireAdminJwt(req, res, next) {
       expired ? '管理登录已过期，请重新登录' : '管理登录状态无效'
     );
   }
-  if (payload.role !== 'admin' || payload.sub !== 'admin') {
+  if (payload.role !== 'admin') {
     return fail(res, 403, ErrorCode.FORBIDDEN, '没有后台管理权限');
   }
-  req.admin = { account: config.adminAccount };
+  req.admin = { id: String(payload.sub || ''), account: String(payload.account || '') };
   next();
+}
+
+/** 视频等后台接口同时支持管理员 JWT 与运维 X-Admin-Token */
+export function requireAdminAccess(req, res, next) {
+  if (req.get('authorization')) {
+    return requireAdminJwt(req, res, next);
+  }
+  return requireAdmin(req, res, next);
 }

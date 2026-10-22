@@ -94,15 +94,13 @@ adminPanelRouter.post(
     if (!account || !password) {
       return fail(res, 400, ErrorCode.BAD_REQUEST, '请输入管理员账号和密码');
     }
-    if (!config.adminToken) {
-      return fail(res, 503, ErrorCode.FORBIDDEN, '服务器未配置 ADMIN_TOKEN，后台登录不可用');
-    }
-    if (!verifyAdminCredentials(account, password)) {
+    const admin = await verifyAdminCredentials(account, password);
+    if (!admin) {
       return fail(res, 401, ErrorCode.INVALID_CREDENTIALS, '管理员账号或密码错误');
     }
     return ok(res, {
-      token: signAdminToken(),
-      account: config.adminAccount,
+      token: signAdminToken(admin),
+      account: admin.account,
       expiresIn: config.adminJwtTtl
     }, '登录成功');
   })

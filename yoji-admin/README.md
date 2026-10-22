@@ -40,8 +40,8 @@ npm start        # 预览 out/：http://localhost:4173
 
 ### 管理员登录
 
-- 账号：`ADMIN_ACCOUNT`，默认 `admin`
-- 密码：服务器 `.env` 里的 `ADMIN_TOKEN`
+- 超级管理员：`admin` / 服务器 `.env` 的 `ADMIN_TOKEN`
+- 测试管理员：`hans` / `123456`、`zhd` / `123456`（全部权限）
 - 登录接口：`POST /api/admin/login`，返回 `role=admin` 的 JWT
 - 前端把 token 存在 `localStorage` 的 `yoji_admin_token`，请求时自动加 `Authorization: Bearer ...`
 - 401 会自动清 token 并跳 `/login`
@@ -52,10 +52,11 @@ npm start        # 预览 out/：http://localhost:4173
 
 | 路由 | 说明 |
 | --- | --- |
-| `/` | Claude 风格欢迎页，入口「进入控制台」 |
+| `/` | 按登录态跳 `/dashboard` 或 `/login` |
 | `/login` | 管理员登录，Claude 双栏布局 |
 | `/dashboard` | 3 张指标卡 + Recharts 14 天趋势图 + 附加统计 |
 | `/users` | 用户表格、搜索、分页、删除确认 |
+| `/videos` | 视频列表、浏览器上传视频/封面、编辑、显示/隐藏、删除 |
 
 ![登录页](../docs/admin-login.png)
 
@@ -100,6 +101,10 @@ yoji-admin/
 | GET | `/api/admin/stats` | `totalUsers/todayActive/masteredWords/trend` |
 | GET | `/api/admin/users` | `?search=&page=&pageSize=` |
 | DELETE | `/api/admin/users/:id` | 删除用户及进度 |
+| GET | `/api/admin/videos` | 视频列表（含隐藏） |
+| POST | `/api/admin/videos/upload` | multipart：video + cover + 标题/日期/排序 |
+| PATCH | `/api/admin/videos/:id` | 修改标题/日期/排序/显示状态 |
+| DELETE | `/api/admin/videos/:id` | 删除视频记录 |
 
 详细字段见 [server/README.md](../server/README.md) 的「后台管理」。
 

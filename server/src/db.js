@@ -1,5 +1,7 @@
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import path from 'node:path';
+import bcrypt from 'bcryptjs';
 import { DatabaseSync } from 'node:sqlite';
 import { config, paths } from './config.js';
 
@@ -49,6 +51,14 @@ CREATE TABLE IF NOT EXISTS videos (
 );
 
 CREATE INDEX IF NOT EXISTS idx_videos_visible ON videos(visible, sort_order, created_at);
+
+CREATE TABLE IF NOT EXISTS admins (
+  id            TEXT PRIMARY KEY,
+  account       TEXT NOT NULL,
+  account_lower TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  created_at    TEXT NOT NULL
+);
 `);
 
 const now = () => new Date().toISOString();
@@ -80,6 +90,18 @@ function mapUser(row) {
     tokenVersion: Number(row.token_version),
     createdAt: row.created_at,
     updatedAt: row.updated_at
+  };
+}
+
+function mapAdmin(row) {
+  if (!row) {
+    return undefined;
+  }
+  return {
+    id: row.id,
+    account: row.account,
+    passwordHash: row.password_hash,
+    createdAt: row.created_at
   };
 }
 
@@ -270,6 +292,41 @@ export function deleteVideo(id) {
 
 /* ---------------------------- admin panel ---------------------------- */
 
+export function findAdminByAccount(accountLower) {
+  return mapAdmin(one('SELECT * FROM admins WHERE account_lower = ?', accountLower));
+}
+
+export function createAdmin(account, passwordHash) {
+  const id = crypto.randomUUID();
+  run(
+    'INSERT INTO admins (id, account, account_lower, password_hash, created_at) VALUES (?, ?, ?, ?, ?)',
+    id,
+    account,
+    account.toLowerCase(),
+    passwordHash,
+    now()
+  );
+  return findAdminByAccount(account.toLowerCase());
+}
+
+/**
+ * 内置测试管理员（需求指定）：
+ *   hans / 123456
+ *   zhd  / 123456
+ * 已有同名账号时不覆盖密码，避免每次重启重置。
+ */
+export function ensureAdminUsers() {
+  const seeds = [
+    { account: 'hans', password: '123456' },
+    { account: 'zhd', password: '123456' }
+  ];
+  for (const item of seeds) {
+    if (!findAdminByAccount(item.account)) {
+      createAdmin(item.account, bcrypt.hashSync(item.password, config.bcryptRounds));
+    }
+  }
+}
+
 export function listUsers() {
   return all(
     'SELECT id, account, nickname, avatar, created_at, updated_at FROM users ORDER BY created_at DESC'
@@ -347,3 +404,6 @@ export function seedVideosIfEmpty() {
   }
   return seeds.length;
 }
+
+// 首次启动或升级后补齐后台测试管理员
+ensureAdminUsers();

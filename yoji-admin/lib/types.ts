@@ -44,3 +44,21 @@ export interface AdminLoginPayload {
   account: string;
   expiresIn: string;
 }
+
+export interface AdminVideo {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  thumbUrl: string;
+  videoUrl: string;
+  duration: number;
+  sortOrder: number;
+  visible: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminVideosPayload {
+  videos: AdminVideo[];
+}

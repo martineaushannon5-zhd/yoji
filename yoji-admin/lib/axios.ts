@@ -1,12 +1,23 @@
 import axios from "axios";
 
 export const TOKEN_KEY = "yoji_admin_token";
+export const ACCOUNT_KEY = "yoji_admin_account";
 
 // 开发环境 .env.development 指向 http://120.24.171.99
 // 生产环境 .env.production 留空，得到同源 /api，由 Nginx 反代，避免混合内容
 const rawOrigin = process.env.NEXT_PUBLIC_API_ORIGIN ?? "";
 const origin = rawOrigin.replace(/\/+$/, "");
 export const API_BASE_URL = `${origin}/api`;
+
+export function resolveMediaUrl(url: string): string {
+  if (!url) {
+    return "";
+  }
+  if (/^https?:\/\//i.test(url)) {
+    return url;
+  }
+  return `${origin}${url}`;
+}
 
 export const api = axios.create({
   baseURL: API_BASE_URL,

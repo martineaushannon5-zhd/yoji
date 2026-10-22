@@ -348,6 +348,57 @@ test('头像上传：原始图片字节写入媒体目录并回写用户头像',
   assert.equal(me.body.data.avatar, body.data.avatar);
 });
 
+test('管理后台：hans/zhd 测试账号与视频文件上传', async () => {
+  const hans = await api('/api/admin/login', {
+    method: 'POST',
+    body: { account: 'hans', password: '123456' }
+  });
+  assert.equal(hans.status, 200);
+  assert.equal(hans.body.data.account, 'hans');
+  const hansJwt = hans.body.data.token;
+
+  const zhd = await api('/api/admin/login', {
+    method: 'POST',
+    body: { account: 'zhd', password: '123456' }
+  });
+  assert.equal(zhd.status, 200);
+  assert.equal(zhd.body.data.account, 'zhd');
+
+  const form = new FormData();
+  form.append('title', '上传测试视频');
+  form.append('date', '2026-10-22');
+  form.append('sortOrder', '9');
+  form.append('visible', 'true');
+  form.append('video', new File([Buffer.from('fake-video-bytes')], 'upload-test.mp4', { type: 'video/mp4' }));
+  form.append('cover', new File([Buffer.from('fake-cover-bytes')], 'upload-test.png', { type: 'image/png' }));
+
+  const upload = await fetch(`${baseUrl}/api/admin/videos/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${hansJwt}` },
+    body: form
+  });
+  const uploaded = await upload.json();
+  assert.equal(upload.status, 200);
+  assert.equal(uploaded.code, 0);
+  assert.equal(uploaded.data.title, '上传测试视频');
+  assert.ok(uploaded.data.videoUrl.startsWith('/media/videos/'));
+  assert.ok(uploaded.data.thumbUrl.startsWith('/media/thumbs/'));
+
+  const videoFile = await fetch(`${baseUrl}${uploaded.data.videoUrl}`);
+  assert.equal(videoFile.status, 200);
+  const coverFile = await fetch(`${baseUrl}${uploaded.data.thumbUrl}`);
+  assert.equal(coverFile.status, 200);
+
+  const list = await api('/api/videos');
+  assert.ok(list.body.data.videos.some((video) => video.id === uploaded.data.id));
+
+  const removed = await api(`/api/admin/videos/${uploaded.data.id}`, {
+    method: 'DELETE',
+    token: hansJwt
+  });
+  assert.equal(removed.status, 200);
+});
+
 test('管理后台：登录、统计、用户列表、删除', async () => {
   const denied = await api('/api/admin/login', {
     method: 'POST',

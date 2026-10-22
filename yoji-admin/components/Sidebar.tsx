@@ -1,11 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { LayoutDashboard, LogOut, Users, X } from "lucide-react";
+import { Clapperboard, LayoutDashboard, LogOut, Users, X } from "lucide-react";
 
-import { TOKEN_KEY } from "@/lib/axios";
+import { ACCOUNT_KEY, TOKEN_KEY } from "@/lib/axios";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -29,6 +30,12 @@ const NAV_ITEMS: NavItem[] = [
     icon: Users,
     hint: "账号、进度与删除",
   },
+  {
+    label: "视频管理",
+    href: "/videos",
+    icon: Clapperboard,
+    hint: "上传视频与封面",
+  },
 ];
 
 interface SidebarProps {
@@ -40,9 +47,15 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const rawPathname = usePathname();
   const pathname = rawPathname.replace(/\/+$/, "") || "/";
   const router = useRouter();
+  const [account, setAccount] = useState("admin");
+
+  useEffect(() => {
+    setAccount(window.localStorage.getItem(ACCOUNT_KEY) || "admin");
+  }, []);
 
   function logout() {
     window.localStorage.removeItem(TOKEN_KEY);
+    window.localStorage.removeItem(ACCOUNT_KEY);
     router.replace("/login");
   }
 
@@ -120,7 +133,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-[13px] font-medium text-ink">管理员</p>
-              <p className="truncate text-[11px] text-muted-foreground">admin</p>
+              <p className="truncate text-[11px] text-muted-foreground">{account}</p>
             </div>
             <span className="size-1.5 rounded-full bg-emerald-500" />
           </div>

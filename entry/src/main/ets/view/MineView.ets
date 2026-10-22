@@ -139,7 +139,7 @@ export struct MineView {
     if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('file://')) {
       return value;
     }
-    if (value.startsWith('/')) {
+    if (value.startsWith('/media/')) {
       return Api.resolveMediaUrl(value);
     }
     return `file://${value}`;

@@ -14,6 +14,10 @@ const TITLES: Record<string, { title: string; subtitle: string }> = {
     title: "用户管理",
     subtitle: "查看账号、学习进度，处理异常用户",
   },
+  "/videos": {
+    title: "视频管理",
+    subtitle: "可视化添加视频、上传封面与维护列表",
+  },
 };
 
 interface HeaderProps {

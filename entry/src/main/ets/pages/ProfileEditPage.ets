@@ -44,9 +44,15 @@ struct ProfileEditPage {
       const ctx = getContext(this) as common.UIAbilityContext;
       const dest = `${ctx.filesDir}/avatar_${Date.now()}.jpg`;
       const src = fs.openSync(result.photoUris[0], fs.OpenMode.READ_ONLY);
-      fs.copyFileSync(src.fd, dest);
-      fs.closeSync(src);
-      this.avatar = dest;
+      try {
+        fs.copyFileSync(src.fd, dest);
+        // 相册选择器返回时页面可能重新走 aboutToAppear，
+        // 只改 @State 会被 Store 里的旧头像覆盖；这里立即持久化到 Store。
+        this.avatar = dest;
+        await this.store.updateProfile(this.store.nickname, this.store.gender, this.store.birthday, dest);
+      } finally {
+        fs.closeSync(src);
+      }
     } catch (err) {
       console.error(`pickAvatar failed: ${err}`);
       promptAction.showToast({ message: '头像设置失败，请重试' });
@@ -70,7 +76,7 @@ struct ProfileEditPage {
     if (this.avatar.startsWith('http://') || this.avatar.startsWith('https://') || this.avatar.startsWith('file://')) {
       return this.avatar;
     }
-    if (this.avatar.startsWith('/')) {
+    if (this.avatar.startsWith('/media/')) {
       return Api.resolveMediaUrl(this.avatar);
     }
     return `file://${this.avatar}`;
@@ -82,7 +88,7 @@ struct ProfileEditPage {
       return this.avatar;
     }
     // 后端返回的相对地址（/media/avatars/...）已经是服务器头像，不需要再上传
-    if (this.avatar.startsWith('/')) {
+    if (this.avatar.startsWith('/media/')) {
       return this.avatar;
     }
     if (this.store.token === '') {
