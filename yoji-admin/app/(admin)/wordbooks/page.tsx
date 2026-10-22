@@ -107,7 +107,7 @@ export default function WordBooksPage() {
       setVisible(true);
       setProgress(100);
       if (fileRef.current) fileRef.current.value = "";
-      setMessage("词表已上传，App 下次启动会拉取到");
+      setMessage("词表已上传，App 重启或在词库页点“刷新”即可看到");
       await mutate();
     } catch (err) {
       setActionError(getApiErrorMessage(err));
