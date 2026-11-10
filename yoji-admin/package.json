@@ -1,14 +1,56 @@
 {
-  "name": "yoji-admin",
+  "name": "yoji-admin-desktop",
   "version": "0.1.0",
   "private": true,
+  "description": "Yoji 自习室预约系统后台管理桌面端",
+  "author": "HongZihan",
+  "main": "main.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "serve out -l 4173",
-    "lint": "next lint"
+    "lint": "next lint",
+    "electron:dev": "concurrently \"npm run dev\" \"cross-env NODE_ENV=development electron .\"",
+    "electron:start": "electron .",
+    "electron:build": "cross-env NEXT_PUBLIC_API_ORIGIN=https://yoji.zhdstudy.cyou npm run build && cross-env ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/ electron-builder"
   },
-  "dependencies": {
+  "build": {
+    "appId": "com.zhdstudy.yoji.admin",
+    "productName": "Yoji Admin",
+    "asar": true,
+    "compression": "maximum",
+    "electronLanguages": [
+      "zh-CN",
+      "en-US"
+    ],
+    "directories": {
+      "output": "dist-installer"
+    },
+    "files": [
+      "out/**/*",
+      "main.js",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Yoji Admin",
+      "deleteAppDataOnUninstall": false
+    }
+  },
+  "devDependencies": {
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/lora": "^5.3.0",
     "@radix-ui/react-alert-dialog": "^1.2.1",
@@ -16,27 +58,29 @@
     "@radix-ui/react-label": "^2.1.17",
     "@radix-ui/react-separator": "^1.2.0",
     "@radix-ui/react-slot": "^1.5.0",
-    "axios": "^1.20.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "lucide-react": "^1.59.0",
-    "next": "14.2.35",
-    "react": "^18",
-    "react-dom": "^18",
-    "recharts": "^3.10.1",
-    "swr": "^2.5.1",
-    "tailwind-merge": "^3.7.0",
-    "tailwindcss-animate": "^1.0.7"
-  },
-  "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "axios": "^1.20.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "concurrently": "^10.0.7",
+    "cross-env": "^10.1.0",
+    "electron": "^45.2.3",
+    "electron-builder": "^26.18.0",
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
+    "lucide-react": "^1.59.0",
+    "next": "14.2.35",
     "postcss": "^8",
+    "react": "^18",
+    "react-dom": "^18",
+    "recharts": "^3.10.1",
     "serve": "^14.2.6",
+    "swr": "^2.5.1",
+    "tailwind-merge": "^3.7.0",
     "tailwindcss": "^3.4.1",
+    "tailwindcss-animate": "^1.0.7",
     "typescript": "^5"
   }
 }
