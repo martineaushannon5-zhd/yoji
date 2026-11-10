@@ -133,8 +133,12 @@ Content-Type: application/octet-stream
 | `cet4` | CET-4 四级词汇 | 4538 |
 | `cet6` | CET-6 六级词汇 | 2220 |
 | `cet4-6` | CET-4+6 四六级合并 | 8013 |
+| `highschool` | 高中英语词汇 | 3445 |
+| `npee` | 考研英语词汇 | 5392 |
+| `toefl` | TOEFL 托福词汇 | 4510 |
+| `gre` | GRE 8000 词汇 | 7729 |
 
-`/api/wordbooks/full` 约 1.9MB；App 启动时拉取，失败保留内置 60 词。
+`/api/wordbooks/full` 约 4.7MB（gzip 后约 1.1MB）；App 启动时拉取，失败保留内置 60 词。
 
 ---
 
@@ -621,7 +625,7 @@ pm2 save
 - 后台：`http://120.24.171.99/`、`https://yoji.zhdstudy.cyou/`
 - 测试管理员：`hans / 123456`、`zhd / 123456`
 - 超级管理员：`admin` / `.env` 的 `ADMIN_TOKEN`
-- 词表：CET4 4538、CET6 2220、CET4+6 8013
+- 词表：7 个（CET4/CET6/CET4+6/高中/考研/TOEFL/GRE，约 3.5 万词）
 - 视频：3 个（含 `【TED-Ed】`）
 - 后端测试：`npm test` 11/11
 - 关键文档：
