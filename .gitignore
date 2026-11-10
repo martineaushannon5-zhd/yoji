@@ -10,5 +10,29 @@
 /.clang-tidy
 **/.test
 /.appanalyzer
-yoji-admin-site.zip
-yoji-server-update.zip
+
+# 本地压缩包，不入库
+*.zip
+
+# Node / Next.js 依赖与构建产物
+**/node_modules
+yoji-admin/.next/
+yoji-admin/out/
+yoji-admin/.cache/
+yoji-admin/dist-electron/
+yoji-admin/dist-installer/
+
+# 本地私有配置（含 registry token，禁止提交）
+yoji-admin/.npmrc
+
+# 后端运行时数据与媒体文件，仅保留占位文件
+server/data/
+server/media/avatars/*
+server/media/thumbs/*
+server/media/videos/*
+!server/media/avatars/.gitkeep
+!server/media/thumbs/.gitkeep
+!server/media/videos/.gitkeep
+
+# Office / WPS 临时文件
+~$*
