@@ -96,6 +96,36 @@ npm run electron:build  # 构建 Windows NSIS 安装包（输出到 dist-install
 └─ build.bat            Windows 下构建 HAP 的快捷脚本
 ```
 
+## 换电脑 / 新环境：一条命令恢复
+
+三端连接的**线上地址**本来就写在代码或已提交的 env 里，不需要每次重配：
+
+| 端 | 位置 | 值 |
+| --- | --- | --- |
+| 鸿蒙 App | [`entry/src/main/ets/common/Config.ets`](entry/src/main/ets/common/Config.ets) 第 7 行 | `http://120.24.171.99` |
+| 管理端（开发） | [`yoji-admin/lib/axios.ts`](yoji-admin/lib/axios.ts) 第 6–9 行读 `NEXT_PUBLIC_API_ORIGIN`，`.env.development` 已提交 | 线上 IP |
+| 管理端（生产） | `yoji-admin/.env.production` 已提交，值为空 | 同源 `/api`，由 Nginx 反代 |
+| 管理端 v2 | [`yoji-admin-v2/src/utils/http/index.ts`](yoji-admin-v2/src/utils/http/index.ts) 第 42 行 | `https://yoji.zhdstudy.cyou/api` |
+
+真正**不在仓库里、clone 不会带走**的是机器级配置，所以新电脑要跑一次：
+
+```powershell
+.\setup.cmd                                        # 恢复双推 + 生成 server/.env + 装依赖
+.\setup.cmd -GithubProxy http://127.0.0.1:10090    # 顺便写 GitHub 代理（按本机代理端口改）
+.\setup.cmd -SkipInstall                           # 只修 git 配置，不装依赖
+```
+
+[`scripts/bootstrap.ps1`](scripts/bootstrap.ps1) 可重复执行，做的事：
+
+| 步骤 | 说明 |
+| --- | --- |
+| 远程仓库 | `origin` fetch 指 GitHub，push 同时写 GitHub + Gitee；缺 `gitee` 远程则补上（`.git/config` 不在仓库里，这是换电脑必丢的一项） |
+| 代理 | 传 `-GithubProxy` 时写入全局 `http.https://github.com.proxy`；已存在则保留 |
+| 本地 env | 没有 `server/.env` 时生成开发配置，后台账号固定为 `admin` / `dev-admin-token` |
+| 依赖 | `server`、`yoji-admin`、`yoji-admin-v2` 缺 `node_modules` 时执行 `npm install` |
+
+换电脑后仍躲不掉的只有登录本身：Git 凭据（Windows 凭据管理器，第一次 push 时输入一次）和管理后台登录（token 存在浏览器 localStorage，换机器/换浏览器要重新登录一次）。
+
 ## 部署（2026-11-16 更新）
 
 线上入口：<https://yoji.zhdstudy.cyou>，App 与管理端共用同一域名；API 走同域 `/api`，静态媒体走 `/media`。
