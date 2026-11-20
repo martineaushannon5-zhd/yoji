@@ -11,6 +11,9 @@
         <ElButton @click="load">
           <ArtSvgIcon icon="ri:refresh-line" class="mr-1" />刷新
         </ElButton>
+        <ElButton @click="$router.push('/sync')">
+          <ArtSvgIcon icon="ri:cloud-download-line" class="mr-1" />从官方同步
+        </ElButton>
         <ElButton type="primary" @click="openUpload">
           <ArtSvgIcon icon="ri:upload-cloud-2-line" class="mr-1" />上传词库
         </ElButton>

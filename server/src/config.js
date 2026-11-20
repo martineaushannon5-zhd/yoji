@@ -47,7 +47,13 @@ export const config = {
   corsOrigin: process.env.CORS_ORIGIN || '*',
 
   // 单个用户进度 JSON 的硬上限，防止恶意超大请求
-  maxProgressBytes: int(process.env.MAX_PROGRESS_BYTES, 1024 * 1024)
+  maxProgressBytes: int(process.env.MAX_PROGRESS_BYTES, 1024 * 1024),
+
+  // 词库同步：默认从官方节点拉取全部词库，供自部署实例一键导入
+  officialWordbooksUrl:
+    process.env.OFFICIAL_WORDBOOKS_URL || 'https://yoji.zhdstudy.cyou/api/wordbooks/full',
+  wordbookSyncMaxBytes: int(process.env.WORDBOOK_SYNC_MAX_BYTES, 40 * 1024 * 1024),
+  wordbookSyncTimeoutMs: int(process.env.WORDBOOK_SYNC_TIMEOUT_MS, 30000)
 };
 
 export const paths = {

@@ -44,6 +44,16 @@ export const yojiRoutes: AppRouteRecord[] = [
     }
   },
   {
+    path: '/sync',
+    name: 'Sync',
+    component: '/yoji/sync',
+    meta: {
+      title: '词库同步',
+      icon: 'ri:cloud-download-line',
+      keepAlive: true
+    }
+  },
+  {
     path: '/audit',
     name: 'Audit',
     component: '/yoji/audit',

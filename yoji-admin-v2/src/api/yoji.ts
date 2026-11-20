@@ -1,17 +1,10 @@
 import request from '@/utils/http'
 import { useUserStore } from '@/store/modules/user'
+import { API_BASE, API_ORIGIN, mediaUrl } from './origin'
 
 /** Yoji 管理端 API 封装（后端统一返回 { code: 0, message, data }） */
 
-export const API_ORIGIN = 'https://yoji.zhdstudy.cyou'
-export const API_BASE = `${API_ORIGIN}/api`
-
-/** 把后端返回的相对媒体路径补成可访问的绝对地址 */
-export function mediaUrl(url?: string | null): string {
-  if (!url) return ''
-  if (/^https?:\/\//i.test(url)) return url
-  return `${API_ORIGIN}${url}`
-}
+export { API_ORIGIN, mediaUrl }
 
 export interface LoginResult {
   token: string
@@ -284,5 +277,34 @@ export function putToOss(ticket: UploadTicket, file: File, onProgress?: (percent
       else reject(new Error(`OSS 返回 ${xhr.status}`))
     }
     xhr.send(form)
+  })
+}
+export interface SyncBookResult {
+  id: string
+  name: string
+  words: number
+}
+
+export interface SyncSkipped {
+  id: string
+  reason: string
+}
+
+export interface SyncResult {
+  source: string
+  imported: SyncBookResult[]
+  skipped: SyncSkipped[]
+  totalBooks: number
+  totalWords: number
+  skippedWords: number
+  elapsedMs: number
+}
+
+/** 从官方节点同步全部词库到本地数据库（自部署实例初始化用） */
+export function syncWordbooks(url?: string) {
+  return request.request<SyncResult>({
+    url: '/admin/wordbooks/sync',
+    method: 'POST',
+    data: url ? { url } : {}
   })
 }

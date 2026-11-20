@@ -522,6 +522,27 @@ export const openapi = {
         responses: { 200: { description: '导入结果' }, 400: errorResponse('只支持 .txt 或 .json 词表') }
       }
     },
+    '/api/admin/wordbooks/sync': {
+      post: {
+        tags: ['Admin'],
+        summary: '从官方节点同步全部词库',
+        security: bearer,
+        description:
+          '自部署实例初始化用。默认拉取 `OFFICIAL_WORDBOOKS_URL`（官方 `/api/wordbooks/full`），' +
+          '按 id 整本覆盖写入本地库；拒绝内网地址，单次上限 40MB。',
+        requestBody: jsonBody({
+          type: 'object',
+          properties: {
+            url: { type: 'string', description: '可选，自定义可信实例的 /api/wordbooks/full 地址' }
+          }
+        }),
+        responses: {
+          200: { description: '同步结果（imported / skipped / totalWords / elapsedMs）' },
+          400: errorResponse('地址不合法或指向内网'),
+          502: errorResponse('拉取失败或返回格式不正确')
+        }
+      }
+    },
     '/api/admin/wordbooks/{id}': {
       get: {
         tags: ['Admin'],

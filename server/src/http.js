@@ -26,5 +26,6 @@ export const ErrorCode = {
   NOT_FOUND: 1007,
   CONFLICT: 1008,
   RATE_LIMITED: 1009,
+  BAD_GATEWAY: 1011,
   SERVER_ERROR: 1500
 };

@@ -39,7 +39,9 @@ interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {
 }
 
 const { VITE_WITH_CREDENTIALS } = import.meta.env
-const VITE_API_URL = 'https://yoji.zhdstudy.cyou/api'
+import { API_BASE } from '@/api/origin'
+
+const VITE_API_URL = API_BASE
 
 /** Axios实例 */
 const axiosInstance = axios.create({
