@@ -138,7 +138,7 @@ Content-Type: application/octet-stream
 | `toefl` | TOEFL 托福词汇 | 4510 |
 | `gre` | GRE 8000 词汇 | 7729 |
 
-`/api/wordbooks/full` 约 4.7MB（gzip 后约 1.1MB）；App 启动时拉取，失败保留内置 60 词。
+`/api/wordbooks/full` 约 4.7MB；服务端对大于 1KB 的 JSON 自动 gzip（约 1.1MB），并返回 `ETag`，带 `If-None-Match` 重验时 304。App 启动时拉取，失败保留内置 60 词。
 
 ---
 

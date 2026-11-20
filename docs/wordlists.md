@@ -12,6 +12,12 @@
 > - `TOEFL 托福词汇`：4510 词
 > - `GRE 8000 词汇`：7729 词
 >
+> **2026-11-17 又新增 2 本（GitHub 开源数据）：**
+>
+> - `IELTS 雅思词汇`：7298 词，含 CEFR 等级、英式音标、中文释义与双语例句（word-atlas，CC BY 4.0）
+> - `柯林斯五星核心词`：630 词（collins-vocabulary，MIT）
+> - 线上启用 8 本，合计 39,237 词；转换/导入见 `工作流/12-开源词库扩展.md`
+>
 > 后台地址：<http://120.24.171.99/wordbooks/> 或 <https://yoji.zhdstudy.cyou/wordbooks/>。App 启动时请求 `/api/wordbooks/full` 获取启用的词表；词库页可点“刷新”。
 
 ## 一、首选：ECDICT（开源、可离线、MIT）

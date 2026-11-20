@@ -13,8 +13,10 @@
 | 考研英语词汇 | 5392 | `NPEE_Wordlist.txt` |
 | TOEFL 托福词汇 | 4510 | `TOEFL.txt` |
 | GRE 8000 词汇 | 7729 | `GRE_8000_Words.txt` |
+| IELTS 雅思词汇 | 7298 | `word-atlas`（CC BY 4.0），含双语例句 |
+| 柯林斯五星核心词 | 630 | `collins-vocabulary`（MIT） |
 
-总计约 **3.5 万词条**。`CET-4+6` 仍有约 1102 个词、高中词表有约 184 个词没有中文释义；App 会显示单词，释义为空，后续可用带释义的 JSON 覆盖。
+总计约 **3.9 万词条**（`cet4` 4538 词当前 `visible=0`，未计入）。`CET-4+6` 仍有约 1102 个词、高中词表有约 184 个词没有中文释义；App 会显示单词，释义为空，后续可用带释义的 JSON 覆盖。
 
 ## App 如何拿到词表
 
@@ -24,7 +26,7 @@
 4. 词库选择页直接显示后台启用的词表；
 5. 词库页右上角有“刷新”，后台新增词表后不用杀 App。
 
-`/api/wordbooks/full` 当前约 4.7MB，Nginx gzip 后约 1.1MB。
+`/api/wordbooks/full` 当前约 **6.1MB**（gzip 后约 1.7MB，Nginx 与 `server/src/gzip.js` 都会压缩，带 `If-None-Match` 命中时返回 304）。
 
 ## 后台上传格式
 

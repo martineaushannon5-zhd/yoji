@@ -34,5 +34,14 @@ server/media/videos/*
 !server/media/thumbs/.gitkeep
 !server/media/videos/.gitkeep
 
+# yoji-admin-v2（Vite + Electron）构建产物、安装包与本地配置
+yoji-admin-v2/dist/
+yoji-admin-v2/dist-*/
+yoji-admin-v2/dist-release*/
+yoji-admin-v2/release/
+yoji-admin-v2/.env
+yoji-admin-v2/.env.*
+yoji-admin-v2/*.log
+
 # Office / WPS 临时文件
 ~$*
