@@ -96,6 +96,30 @@ npm run electron:build  # 构建 Windows NSIS 安装包（输出到 dist-install
 └─ build.bat            Windows 下构建 HAP 的快捷脚本
 ```
 
+## 部署（2026-11-16 更新）
+
+线上入口：<https://yoji.zhdstudy.cyou>，App 与管理端共用同一域名；API 走同域 `/api`，静态媒体走 `/media`。
+
+| 项 | 值 |
+| --- | --- |
+| 服务器 | 阿里云深圳 ECS，2 核 2G，公网 `120.24.171.99` |
+| Node | `/www/server/nodejs/v24.22.0/bin/node` |
+| 后端进程 | PM2 `yoji_project`，代码在 `/www/wwwroot/yoji/server` |
+| 管理端静态站 | `/www/wwwroot/yoji-admin`（Next.js `out/`） |
+| Nginx 站点 | `/www/server/panel/vhost/nginx/node_yoji_project.conf` |
+| 反向代理 | `location /api/` → `http://127.0.0.1:3000`（3000 不对外开放） |
+| 视频 | 阿里云 OSS 深圳 Bucket，后台直传；`GET /api/admin/storage` 可查当前模式 |
+| 备份 | `/root/backups` |
+
+本次后端新增：
+
+- OpenAPI 文档：`GET /api/openapi.json`、`GET /api/docs`，`GET /api` 返回分组索引
+- 管理端审计日志（`/audit`）与用户 CSV 导出（UTF-8 BOM）
+- 错词本 / 间隔复习（SRS）快照字段
+- OSS 直传签名接口，视频不再占用服务器磁盘
+
+日常发布顺序：server 先 `npm test` → 备份 → 覆盖 `src/` → `pm2 restart yoji_project`；admin 用 `NEXT_PUBLIC_API_ORIGIN=https://yoji.zhdstudy.cyou npm run build` 后覆盖静态目录。完整命令、验证结果、回滚方式和 `/api` 301 修复见 [`工作流/11-部署与运维记录.md`](工作流/11-部署与运维记录.md)。
+
 ## 文档
 
 | 文档 | 内容 |
@@ -111,7 +135,10 @@ npm run electron:build  # 构建 Windows NSIS 安装包（输出到 dist-install
 
 ## 仓库
 
-- 远程仓库：<https://github.com/martineaushannon5-zhd/yoji.git>
+- 远程仓库（`origin` 配置双推，`git push` 一次同步两边）：
+  - GitHub：<https://github.com/martineaushannon5-zhd/yoji.git>
+  - Gitee（老仓库）：<https://gitee.com/Liaohaoran1026/shixun-project>
+- `gitee` 远程单独保留，便于拉取老仓库分支
 - 主开发分支：`integration/v1.2.0-backend`
 
 ```bash
