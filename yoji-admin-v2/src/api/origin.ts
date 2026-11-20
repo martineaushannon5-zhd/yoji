@@ -7,7 +7,7 @@ const OFFICIAL_ORIGIN = 'https://yoji.zhdstudy.cyou'
  * 1. localStorage.yoji_api_origin 覆盖（便于自部署实例临时指到别的机器）
  * 2. VITE_API_ORIGIN 构建时注入
  * 3. Electron（app://）没有同源后端，回退官方节点
- * 4. 本地开发端口（3006/5173）回退官方节点，避免本地没起后端时整页报错
+ * 4. 本地开发（localhost/127.0.0.1）默认指向本机 3000 端口的后端
  * 5. 其余情况用当前站点同源 —— 自部署时前端与后端由同一个 Nginx 提供
  */
 export function resolveApiOrigin(): string {
@@ -19,8 +19,8 @@ export function resolveApiOrigin(): string {
 
   const { protocol, hostname, port, origin } = window.location
   if (protocol === 'app:') return OFFICIAL_ORIGIN
-  if ((hostname === 'localhost' || hostname === '127.0.0.1') && (port === '3006' || port === '5173')) {
-    return OFFICIAL_ORIGIN
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://127.0.0.1:3000'
   }
   if (!origin || origin === 'null') return OFFICIAL_ORIGIN
   return origin.replace(/\/+$/, '')
