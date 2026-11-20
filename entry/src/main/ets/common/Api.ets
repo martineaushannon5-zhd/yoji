@@ -140,6 +140,10 @@ function videoFail(message: string): VideoListResult {
 
 /* ---------------------------- HTTP 基础 ----------------------------- */
 
+// 后台全量词表约 6.5MB；HarmonyOS http 默认 maxLimit 为 5MB，
+// 超过后会在写入响应体时报 2300023（CURLcode 23），导致 App 静默回退内置词表。
+const HTTP_MAX_RESPONSE_BYTES: number = 10 * 1024 * 1024;
+
 class Http {
   static async send(path: string, method: http.RequestMethod, body: string,
     token: string, readTimeout: number = 15000): Promise<HttpReply> {
@@ -156,7 +160,8 @@ class Http {
         extraData: body,
         expectDataType: http.HttpDataType.STRING,
         connectTimeout: 8000,
-        readTimeout: readTimeout
+        readTimeout: readTimeout,
+        maxLimit: HTTP_MAX_RESPONSE_BYTES
       };
       const response = await request.request(API_BASE_URL + path, options);
       const reply: HttpReply = {
