@@ -13,6 +13,8 @@ import { progressRouter } from './routes/progress.js';
 import { videosRouter } from './routes/videos.js';
 import { wordbooksRouter } from './routes/wordbooks.js';
 import { adminRouter } from './routes/admin.js';
+import { gzipJson } from './gzip.js';
+import { docsHtml, openapi } from './openapi.js';
 
 export const app = express();
 
@@ -85,6 +87,47 @@ app.get('/healthz', (req, res) => {
 });
 
 app.use('/api', apiLimiter);
+// 大 JSON 响应按需 gzip（词表全量接口 4–5MB → 约 0.3MB），并支持 ETag 304 复用
+app.use('/api', gzipJson());
+
+// 接口索引与文档：/api 不再返回 404，行为对齐 FastAPI 的 /docs 与 /openapi.json
+app.get('/api', (req, res) => {
+  const groups = {};
+  for (const [routePath, operations] of Object.entries(openapi.paths)) {
+    if (routePath === '/api' || routePath === '/api/docs' || routePath === '/api/openapi.json') {
+      continue;
+    }
+    for (const [method, operation] of Object.entries(operations)) {
+      if (typeof operation !== 'object' || !operation.tags) {
+        continue;
+      }
+      for (const tag of operation.tags) {
+        groups[tag] ??= [];
+        groups[tag].push({
+          method: method.toUpperCase(),
+          path: routePath,
+          summary: operation.summary
+        });
+      }
+    }
+  }
+  res.json({
+    name: 'Yoji API',
+    version: openapi.info.version,
+    docs: '/api/docs',
+    openapi: '/api/openapi.json',
+    total: Object.values(groups).reduce((sum, list) => sum + list.length, 0),
+    groups
+  });
+});
+
+app.get('/api/openapi.json', (req, res) => {
+  res.json(openapi);
+});
+
+app.get('/api/docs', (req, res) => {
+  res.type('html').send(docsHtml);
+});
 app.use('/api/auth/register', registerLimiter);
 app.use('/api/auth', authLimiter, authRouter);
 app.use('/api/progress', progressRouter);

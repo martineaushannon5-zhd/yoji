@@ -8,6 +8,7 @@ import {
   deleteWordBook,
   getWordBook,
   listWordBooks,
+  recordAuditLog,
   saveWordBook
 } from '../db.js';
 import { asyncRoute, ErrorCode, fail, ok } from '../http.js';
@@ -106,6 +107,13 @@ adminWordbooksRouter.post(
       visible: String(req.body?.visible ?? 'true') !== 'false',
       sortOrder
     });
+    recordAuditLog({
+      account: req.admin?.account || 'admin',
+      action: 'wordbook.upload',
+      target: book.id,
+      detail: `${book.name}（${parsed.length} 词）`,
+      ip: req.ip
+    });
     return ok(res, { ...book, words: undefined }, '词表已上传');
   })
 );
@@ -127,6 +135,13 @@ adminWordbooksRouter.patch(
         ? Math.trunc(Number(req.body.sortOrder))
         : existing.sortOrder
     });
+    recordAuditLog({
+      account: req.admin?.account || 'admin',
+      action: 'wordbook.update',
+      target: book.id,
+      detail: book.name,
+      ip: req.ip
+    });
     return ok(res, { ...book, words: undefined }, '词表已更新');
   })
 );
@@ -137,6 +152,12 @@ adminWordbooksRouter.delete(
     if (!deleteWordBook(req.params.id)) {
       return fail(res, 404, ErrorCode.NOT_FOUND, '词表不存在');
     }
+    recordAuditLog({
+      account: req.admin?.account || 'admin',
+      action: 'wordbook.delete',
+      target: req.params.id,
+      ip: req.ip
+    });
     return ok(res, null, '词表已删除');
   })
 );

@@ -166,6 +166,62 @@ export function sanitizeSnapshot(input) {
     favoriteVideoCount += 1;
   }
 
+  // 错词本：wordId -> 最近答错日期
+  const wrongMap = {};
+  let wrongEntryCount = 0;
+  for (const [key, value] of Object.entries(asObject(src.wrongMap))) {
+    if (!ID_RE.test(key) || wrongEntryCount >= MAX_WORDS) {
+      continue;
+    }
+    const date = asDateKey(value);
+    if (date) {
+      wrongMap[key] = date;
+      wrongEntryCount += 1;
+    }
+  }
+
+  // 答错次数
+  const wrongCount = {};
+  let wrongCountEntries = 0;
+  for (const [key, value] of Object.entries(asObject(src.wrongCount))) {
+    if (!ID_RE.test(key) || wrongCountEntries >= MAX_WORDS) {
+      continue;
+    }
+    const n = clampInt(value, 0, 100000, 0);
+    if (n > 0) {
+      wrongCount[key] = n;
+      wrongCountEntries += 1;
+    }
+  }
+
+  // 间隔复习等级：0 表示刚答错，数组长度见 App 端 REVIEW_INTERVALS
+  const reviewLevel = {};
+  let levelEntries = 0;
+  for (const [key, value] of Object.entries(asObject(src.reviewLevel))) {
+    if (!ID_RE.test(key) || levelEntries >= MAX_WORDS) {
+      continue;
+    }
+    const level = clampInt(value, 0, 20, 0);
+    if (level > 0) {
+      reviewLevel[key] = level;
+      levelEntries += 1;
+    }
+  }
+
+  // 下次复习日期
+  const reviewDue = {};
+  let dueEntries = 0;
+  for (const [key, value] of Object.entries(asObject(src.reviewDue))) {
+    if (!ID_RE.test(key) || dueEntries >= MAX_WORDS) {
+      continue;
+    }
+    const date = asDateKey(value);
+    if (date) {
+      reviewDue[key] = date;
+      dueEntries += 1;
+    }
+  }
+
   return {
     currentBookId: asText(src.currentBookId, 64, 'cet4') || 'cet4',
     dailyTarget: clampInt(src.dailyTarget, 5, 50, 10),
@@ -173,6 +229,10 @@ export function sanitizeSnapshot(input) {
     masteredAt,
     learnedLog,
     favorites,
+    wrongMap,
+    wrongCount,
+    reviewLevel,
+    reviewDue,
     swipeGuideShown: src.swipeGuideShown === true,
     todayLearned: clampInt(src.todayLearned, 0, 100000, 0),
     todayDate: asDateKey(src.todayDate),
@@ -198,6 +258,7 @@ export function hasMeaningfulData(snapshot) {
     Object.keys(snapshot.learnedLog).length > 0 ||
     Object.keys(snapshot.masteredAt).length > 0 ||
     Object.keys(snapshot.videoProgress).length > 0 ||
+    Object.keys(snapshot.wrongMap).length > 0 ||
     snapshot.customWords.length > 0 ||
     snapshot.totalLearned > 0
   );
@@ -304,6 +365,14 @@ function mergeCounters(server, client) {
   };
 }
 
+function mergeNumberMaps(serverMap, clientMap) {
+  const merged = { ...serverMap };
+  for (const [key, value] of Object.entries(clientMap)) {
+    merged[key] = Math.max(merged[key] ?? 0, value);
+  }
+  return merged;
+}
+
 export function mergeSnapshots(serverInput, clientInput) {
   const server = sanitizeSnapshot(serverInput);
   const client = sanitizeSnapshot(clientInput);
@@ -328,6 +397,11 @@ export function mergeSnapshots(serverInput, clientInput) {
     masteredAt: mergeDateMaps(server.masteredAt, client.masteredAt),
     learnedLog,
     favorites: mergeDateMaps(server.favorites, client.favorites, 'server'),
+    // 错词本取并集；次数取较大值，等级取较高值，到期日取较晚的一天，避免多端反复催复习
+    wrongMap: mergeDateMaps(server.wrongMap, client.wrongMap),
+    wrongCount: mergeNumberMaps(server.wrongCount, client.wrongCount),
+    reviewLevel: mergeNumberMaps(server.reviewLevel, client.reviewLevel),
+    reviewDue: mergeDateMaps(server.reviewDue, client.reviewDue),
     swipeGuideShown: server.swipeGuideShown || client.swipeGuideShown,
     todayLearned,
     todayDate,

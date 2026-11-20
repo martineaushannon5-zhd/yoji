@@ -9,11 +9,13 @@ import {
   deleteVideo,
   getVideo,
   listVideos,
+  recordAuditLog,
   updateVideo
 } from '../db.js';
 import { config } from '../config.js';
 import { asyncRoute, ErrorCode, fail, ok } from '../http.js';
 import { syncMedia } from '../media-sync.js';
+import { createUploadTicket, ossConfig, storageMode } from '../oss.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAdminAccess);
@@ -204,11 +206,47 @@ adminRouter.post(
         sortOrder,
         visible
       });
+      recordAuditLog({
+        account: req.admin?.account || 'ops',
+        action: 'video.upload',
+        target: video.id,
+        detail: video.title,
+        ip: req.ip
+      });
       return ok(res, video, '视频已上传');
     } catch (err) {
       removeUploaded(req.files);
       throw err;
     }
+  })
+);
+
+/*
+ * 直传 OSS：后台只发一次性签名，浏览器把文件 POST 给 OSS。
+ * 未配置 OSS_* 时返回 mode=local，前端继续走 /admin/videos/upload 的本地磁盘上传。
+ */
+adminRouter.get(
+  '/storage',
+  asyncRoute(async (req, res) => {
+    const conf = ossConfig();
+    return ok(res, {
+      mode: storageMode(),
+      publicBase: conf.enabled ? conf.publicBase : null,
+      dir: conf.enabled ? conf.dir : null
+    });
+  })
+);
+
+adminRouter.post(
+  '/media/sign',
+  asyncRoute(async (req, res) => {
+    const kind = req.body?.kind === 'thumb' ? 'thumb' : 'video';
+    const ticket = createUploadTicket({ kind, filename: text(req.body?.filename, 200) });
+    if (ticket.error) {
+      const status = ticket.error === 'OSS 未配置' ? 409 : 400;
+      return fail(res, status, ErrorCode.BAD_REQUEST, ticket.error);
+    }
+    return ok(res, ticket, '签名有效 10 分钟，请立即上传');
   })
 );
 
@@ -246,6 +284,13 @@ adminRouter.post(
       return fail(res, 409, ErrorCode.CONFLICT, '该 id 已存在');
     }
     const video = createVideo({ id, ...parsed.value });
+    recordAuditLog({
+      account: req.admin?.account || 'ops',
+      action: 'video.create',
+      target: video.id,
+      detail: video.title,
+      ip: req.ip
+    });
     return ok(res, video, '已创建');
   })
 );
@@ -262,6 +307,13 @@ adminRouter.patch(
       return fail(res, 400, ErrorCode.BAD_REQUEST, parsed.error);
     }
     const video = updateVideo(existing.id, parsed.value);
+    recordAuditLog({
+      account: req.admin?.account || 'ops',
+      action: 'video.update',
+      target: video.id,
+      detail: video.title,
+      ip: req.ip
+    });
     return ok(res, video, '已更新');
   })
 );
@@ -272,6 +324,12 @@ adminRouter.delete(
     if (!deleteVideo(req.params.id)) {
       return fail(res, 404, ErrorCode.NOT_FOUND, '视频不存在');
     }
+    recordAuditLog({
+      account: req.admin?.account || 'ops',
+      action: 'video.delete',
+      target: req.params.id,
+      ip: req.ip
+    });
     return ok(res, null, '已删除');
   })
 );

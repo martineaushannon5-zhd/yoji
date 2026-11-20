@@ -1,6 +1,8 @@
 import fs from 'node:fs';
+import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
+import zlib from 'node:zlib';
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -440,6 +442,74 @@ test('词表：管理员上传、公开列表、删除', async () => {
     token
   });
   assert.equal(removed.status, 200);
+});
+
+// fetch 会自行补 Accept-Encoding，这里用裸 http 请求精确控制请求头
+function rawGet(pathname, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const req = http.request(`${baseUrl}${pathname}`, { headers }, (res) => {
+      const chunks = [];
+      res.on('data', (chunk) => chunks.push(chunk));
+      res.on('end', () => resolve({
+        status: res.statusCode,
+        headers: res.headers,
+        body: Buffer.concat(chunks)
+      }));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+test('词表全量接口：大响应 gzip 压缩 + ETag 304', async () => {
+  const { saveWordBook } = await import('../src/db.js');
+  const words = [];
+  for (let i = 0; i < 400; i += 1) {
+    words.push({
+      id: `gz-${i}`,
+      word: `word${i}`,
+      phonetic: '/ˈgzip/',
+      meaning: `第 ${i} 个单词的中文释义，长度足够让整个响应超过压缩阈值`,
+      example: '',
+      exampleCn: ''
+    });
+  }
+  saveWordBook({
+    id: 'gzip-probe',
+    name: '压缩测试词表',
+    subtitle: '',
+    description: '',
+    source: '',
+    words,
+    sortOrder: 99
+  });
+
+  const identity = await rawGet('/api/wordbooks/full', { 'Accept-Encoding': 'identity' });
+  assert.equal(identity.status, 200);
+  assert.equal(identity.headers['content-encoding'], undefined);
+  assert.ok(identity.body.length > 8 * 1024);
+
+  const gzipped = await rawGet('/api/wordbooks/full', { 'Accept-Encoding': 'gzip' });
+  assert.equal(gzipped.status, 200);
+  assert.equal(gzipped.headers['content-encoding'], 'gzip');
+  assert.ok(gzipped.body.length < identity.body.length / 4);
+  const decoded = JSON.parse(zlib.gunzipSync(gzipped.body).toString('utf8'));
+  assert.equal(decoded.code, 0);
+  assert.ok(decoded.data.books.some((book) => book.id === 'gzip-probe'));
+
+  const etag = gzipped.headers.etag;
+  assert.ok(etag.startsWith('W/"'));
+
+  const revalidated = await rawGet('/api/wordbooks/full', {
+    'Accept-Encoding': 'gzip',
+    'If-None-Match': etag
+  });
+  assert.equal(revalidated.status, 304);
+  assert.equal(revalidated.body.length, 0);
+
+  const identityOnly = await rawGet('/api/wordbooks/full', { 'Accept-Encoding': 'gzip;q=0' });
+  assert.equal(identityOnly.status, 200);
+  assert.equal(identityOnly.headers['content-encoding'], undefined);
 });
 
 test('管理后台：登录、统计、用户列表、删除', async () => {

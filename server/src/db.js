@@ -73,6 +73,18 @@ CREATE TABLE IF NOT EXISTS word_books (
   created_at  TEXT NOT NULL,
   updated_at  TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS admin_audit_logs (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  account    TEXT NOT NULL DEFAULT '',
+  action     TEXT NOT NULL,
+  target     TEXT NOT NULL DEFAULT '',
+  detail     TEXT NOT NULL DEFAULT '',
+  ip         TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_created ON admin_audit_logs(created_at DESC);
 `);
 
 const now = () => new Date().toISOString();
@@ -442,6 +454,59 @@ export function listUsers() {
 
 export function deleteUserById(id) {
   return run('DELETE FROM users WHERE id = ?', id).changes > 0;
+}
+
+/* ------------------------------- 审计日志 ------------------------------- */
+
+/**
+ * 记录一条后台操作。失败只打印日志，不能因为审计写失败而让业务请求 500。
+ */
+export function recordAuditLog({ account, action, target = '', detail = '', ip = '' }) {
+  try {
+    run(
+      'INSERT INTO admin_audit_logs (account, action, target, detail, ip, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      String(account || ''),
+      String(action || 'unknown'),
+      String(target || ''),
+      String(detail || ''),
+      String(ip || ''),
+      now()
+    );
+  } catch (err) {
+    console.error(`recordAuditLog failed: ${err?.message || err}`);
+  }
+}
+
+export function listAuditLogs({ page = 1, pageSize = 20, action = '', account = '' } = {}) {
+  const safePage = Math.max(1, Number(page) || 1);
+  const safeSize = Math.min(100, Math.max(1, Number(pageSize) || 20));
+  const where = [];
+  const params = [];
+  if (action) {
+    where.push('action LIKE ?');
+    params.push(`${action}%`);
+  }
+  if (account) {
+    where.push('account LIKE ?');
+    params.push(`%${account}%`);
+  }
+  const clause = where.length ? ` WHERE ${where.join(' AND ')}` : '';
+  const total = Number(one(`SELECT COUNT(*) AS n FROM admin_audit_logs${clause}`, ...params)?.n || 0);
+  const logs = all(
+    `SELECT id, account, action, target, detail, ip, created_at FROM admin_audit_logs${clause} ORDER BY id DESC LIMIT ? OFFSET ?`,
+    ...params,
+    safeSize,
+    (safePage - 1) * safeSize
+  ).map((row) => ({
+    id: Number(row.id),
+    account: row.account,
+    action: row.action,
+    target: row.target,
+    detail: row.detail,
+    ip: row.ip,
+    createdAt: row.created_at
+  }));
+  return { logs, total, page: safePage, pageSize: safeSize };
 }
 
 /* ------------------------------- misc -------------------------------- */
