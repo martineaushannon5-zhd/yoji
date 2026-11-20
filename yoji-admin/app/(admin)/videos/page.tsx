@@ -18,7 +18,8 @@ import {
 import { api, getApiErrorMessage, resolveMediaUrl } from "@/lib/axios";
 import { fetcher } from "@/lib/fetcher";
 import { formatDate } from "@/lib/format";
-import type { AdminVideo, AdminVideosPayload } from "@/lib/types";
+import { uploadFileToOss } from "@/lib/oss-upload";
+import type { AdminVideo, AdminVideosPayload, StorageInfo } from "@/lib/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -80,6 +81,10 @@ export default function VideosPage() {
   const [actionError, setActionError] = useState("");
   const videoInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
+
+  // 有 OSS 配置时浏览器直传，视频不再经过服务器磁盘
+  const { data: storage } = useSWR<StorageInfo>("/admin/storage", fetcher);
+  const directToOss = storage?.mode === "oss";
 
   const videos = data?.videos ?? [];
   const maxSort = useMemo(
@@ -182,6 +187,23 @@ export default function VideosPage() {
           visible: form.visible,
         });
         setMessage("视频信息已更新");
+      } else if (directToOss) {
+        // 直传 OSS：文件不经过 ECS，服务器只登记 URL
+        setProgress(1);
+        const videoUrl = await uploadFileToOss(videoFile as File, "video", setProgress);
+        const thumbUrl = coverFile ? await uploadFileToOss(coverFile, "thumb") : "";
+        await api.post("/admin/videos", {
+          title: form.title.trim(),
+          description: form.description,
+          date: form.date,
+          sortOrder: Number(form.sortOrder) || 0,
+          visible: form.visible,
+          videoUrl,
+          thumbUrl,
+          duration: 0,
+        });
+        setProgress(100);
+        setMessage("视频已直传 OSS 并加入列表");
       } else {
         const body = new FormData();
         body.append("title", form.title.trim());
@@ -271,7 +293,11 @@ export default function VideosPage() {
             <div>
               <CardTitle className="text-base">{editing ? "编辑视频信息" : "上传新视频"}</CardTitle>
               <p className="mt-1 text-[11px] text-muted-foreground">
-                {editing ? "修改标题、日期与排序" : "支持 mp4 / webm / m4v，最大 900MB"}
+                {editing
+                  ? "修改标题、日期与排序"
+                  : directToOss
+                    ? "支持 mp4 / webm / m4v，最大 900MB · 直传 OSS"
+                    : "支持 mp4 / webm / m4v，最大 900MB"}
               </p>
             </div>
             {editing ? (

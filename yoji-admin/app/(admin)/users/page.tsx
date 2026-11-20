@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import useSWR from "swr";
-import { Loader2, Search, Trash2, UserRound } from "lucide-react";
+import { Download, Loader2, Search, Trash2, UserRound } from "lucide-react";
 
 import { api, getApiErrorMessage } from "@/lib/axios";
 import { fetcher } from "@/lib/fetcher";
@@ -40,6 +40,7 @@ export default function UsersPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
   const [actionError, setActionError] = useState("");
   const debouncedSearch = useDebouncedValue(search, 350);
 
@@ -74,6 +75,29 @@ export default function UsersPage() {
     }
   }
 
+  async function handleExport() {
+    setExporting(true);
+    setActionError("");
+    try {
+      const response = await api.get("/admin/users/export.csv", {
+        params: debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {},
+        responseType: "blob",
+      });
+      const url = URL.createObjectURL(response.data as Blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `yoji-users-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setActionError(getApiErrorMessage(err));
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const users = data?.users ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -92,14 +116,30 @@ export default function UsersPage() {
           </p>
         </div>
 
-        <div className="relative w-full sm:w-72">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="搜索账号或昵称…"
-            className="h-10 rounded-full border-border bg-card pl-9"
-          />
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <div className="relative w-full sm:w-72">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="搜索账号或昵称…"
+              className="h-10 rounded-full border-border bg-card pl-9"
+            />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10 rounded-full border-border bg-card px-4"
+            onClick={handleExport}
+            disabled={exporting || total === 0}
+          >
+            {exporting ? (
+              <Loader2 className="mr-1.5 size-4 animate-spin" />
+            ) : (
+              <Download className="mr-1.5 size-4" />
+            )}
+            导出 CSV
+          </Button>
         </div>
       </div>
 

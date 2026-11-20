@@ -92,3 +92,38 @@ export interface AdminWordBookDetail extends AdminWordBook {
 export interface AdminWordBooksPayload {
   books: AdminWordBook[];
 }
+
+export interface AuditLog {
+  id: number;
+  account: string;
+  action: string;
+  target: string;
+  detail: string;
+  ip: string;
+  createdAt: string;
+}
+
+export interface AuditLogsPayload {
+  logs: AuditLog[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface StorageInfo {
+  mode: "oss" | "local";
+  publicBase: string | null;
+  dir: string | null;
+}
+
+export interface UploadTicket {
+  mode: "oss";
+  host: string;
+  key: string;
+  policy: string;
+  signature: string;
+  accessKeyId: string;
+  expire: string;
+  maxBytes: number;
+  publicUrl: string;
+}

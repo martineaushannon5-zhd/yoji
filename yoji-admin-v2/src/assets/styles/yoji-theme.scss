@@ -1,0 +1,81 @@
+// Yoji 品牌主题：Claude 风格的暖纸色系
+// 主色由 src/config/index.ts 的 systemMainColor[0] 注入到 --el-color-primary / --theme-color
+
+:root {
+  --default-bg-color: #f5f1e8;
+  --default-box-color: #fffdf8;
+  --default-border: #e7dfd2;
+  --default-border-dashed: #ded4c4;
+
+  --art-card-border: rgba(80, 62, 45, 0.12);
+  --art-hover-color: #f2ebdf;
+  --art-active-color: #efe5d6;
+  --art-el-active-color: #f2ebdf;
+
+  --art-gray-900: #322c24;
+  --art-gray-800: #453d33;
+  --art-gray-700: #5c5245;
+  --art-gray-600: #6f6455;
+  --art-gray-500: #8a7d6c;
+  --art-gray-400: #a3968a;
+  --art-gray-300: #c4b8a9;
+
+  --el-border-radius-base: 8px;
+  --el-border-radius-small: 6px;
+}
+
+.dark {
+  --default-bg-color: #1c1a17;
+  --default-box-color: #24211d;
+  --default-border: #37322b;
+
+  --art-card-border: rgba(255, 245, 230, 0.1);
+  --art-hover-color: #2b2722;
+  --art-active-color: #322d27;
+  --art-el-active-color: #2b2722;
+
+  --art-gray-900: #f2ece2;
+  --art-gray-800: #e3dbcf;
+  --art-gray-700: #cfc5b6;
+  --art-gray-600: #b4a999;
+  --art-gray-500: #968a7b;
+  --art-gray-400: #7a6f62;
+  --art-gray-300: #5a5147;
+}
+
+body {
+  font-family:
+    'Inter', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, -apple-system,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+// 卡片统一成轻微的纸张感
+.el-card {
+  --el-card-border-color: var(--art-card-border);
+  border-radius: 14px;
+}
+
+.el-table {
+  --el-table-border-color: var(--default-border);
+  --el-table-header-bg-color: color-mix(in srgb, var(--default-bg-color) 70%, #ffffff);
+  --el-table-header-text-color: var(--art-gray-500);
+  --el-table-row-hover-bg-color: var(--art-hover-color);
+  font-size: 13px;
+}
+
+.el-button--primary {
+  --el-button-bg-color: #c96442;
+  --el-button-border-color: #c96442;
+  --el-button-hover-bg-color: #b4563a;
+  --el-button-hover-border-color: #b4563a;
+  --el-button-active-bg-color: #a04c33;
+  --el-button-active-border-color: #a04c33;
+}
+
+// 侧边栏亮色主题下的品牌细节
+.art-sidebar-menu {
+  .logo {
+    border-radius: 10px;
+  }
+}

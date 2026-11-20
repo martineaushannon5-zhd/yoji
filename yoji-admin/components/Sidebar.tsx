@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { BookOpen, Clapperboard, LayoutDashboard, LogOut, Users, X } from "lucide-react";
+import { BookOpen, Clapperboard, LayoutDashboard, LogOut, ScrollText, Users, X } from "lucide-react";
 
 import { ACCOUNT_KEY, TOKEN_KEY } from "@/lib/axios";
 import { cn } from "@/lib/utils";
@@ -41,6 +41,12 @@ const NAV_ITEMS: NavItem[] = [
     href: "/wordbooks",
     icon: BookOpen,
     hint: "查看与上传词表",
+  },
+  {
+    label: "审计日志",
+    href: "/audit",
+    icon: ScrollText,
+    hint: "谁在什么时候改了什么",
   },
 ];
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import useSWR from "swr";
 import {
   Area,
@@ -13,14 +14,16 @@ import {
 import {
   Activity,
   BookOpenCheck,
+  ChevronRight,
   RefreshCw,
+  ScrollText,
   TrendingUp,
   Users,
 } from "lucide-react";
 
 import { fetcher } from "@/lib/fetcher";
 import { formatNumber } from "@/lib/format";
-import type { AdminStats } from "@/lib/types";
+import type { AdminStats, AuditLogsPayload } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -248,6 +251,97 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>
+
+      <RecentAudit />
     </div>
   );
+}
+
+const ACTION_LABELS: Record<string, string> = {
+  "admin.login": "登录后台",
+  "admin.login.failed": "登录失败",
+  "user.delete": "删除用户",
+  "user.export": "导出用户",
+  "video.upload": "上传视频",
+  "video.create": "新建视频",
+  "video.update": "更新视频",
+  "video.delete": "删除视频",
+  "wordbook.upload": "上传词表",
+  "wordbook.update": "更新词表",
+  "wordbook.delete": "删除词表",
+};
+
+function RecentAudit() {
+  const { data, isLoading } = useSWR<AuditLogsPayload>("/admin/audit?pageSize=6", fetcher, {
+    refreshInterval: 30000,
+  });
+  const logs = data?.logs ?? [];
+
+  return (
+    <Card className="rounded-xl border-border bg-card shadow-none">
+      <CardHeader className="flex flex-row items-center justify-between border-b border-border px-6 py-4">
+        <div className="flex items-center gap-2">
+          <ScrollText className="size-4 text-terracotta" />
+          <CardTitle className="font-serif text-lg tracking-tight text-ink">最近操作</CardTitle>
+        </div>
+        <Link
+          href="/audit"
+          className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-terracotta"
+        >
+          查看全部
+          <ChevronRight className="size-3.5" />
+        </Link>
+      </CardHeader>
+      <CardContent className="p-0">
+        {isLoading && logs.length === 0 ? (
+          <div className="space-y-3 px-6 py-5">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Skeleton key={index} className="h-4 w-full" />
+            ))}
+          </div>
+        ) : logs.length === 0 ? (
+          <div className="px-6 py-8 text-center">
+            <p className="text-sm text-ink">还没有操作记录</p>
+            <p className="mt-1 text-xs text-muted-foreground">登录后台后这里会开始留痕。</p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-border">
+            {logs.map((log) => (
+              <li key={log.id} className="flex items-center gap-3 px-6 py-3">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-terracotta-soft text-[11px] text-accent-foreground">
+                  {log.account.slice(0, 1).toUpperCase() || "?"}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] text-ink">
+                    <span className="font-medium">@{log.account}</span>{" "}
+                    {ACTION_LABELS[log.action] || log.action}
+                    {log.target ? (
+                      <span className="text-muted-foreground"> · {log.target}</span>
+                    ) : null}
+                  </p>
+                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                    {log.detail || "—"} · {formatDateTime(log.createdAt)}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function formatDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value || "—";
+  }
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
 }
