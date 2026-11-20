@@ -1,6 +1,20 @@
 {
   "app": {
-    "signingConfigs": [],
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "C:\\Users\\win10pro\\.ohos\\config\\default_shixun-project-HongZihan_CTaepfdaeaHlj9IoZ-tjhmWKra1Bmu1wKSrwaYay8q8=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001BCDF479F9BECA52D0DBD7C2745C4A78E472C38DF951E9B72088677AB327F85A94926D132F6CC6F5",
+          "profile": "C:\\Users\\win10pro\\.ohos\\config\\default_shixun-project-HongZihan_CTaepfdaeaHlj9IoZ-tjhmWKra1Bmu1wKSrwaYay8q8=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:\\Users\\win10pro\\.ohos\\config\\default_shixun-project-HongZihan_CTaepfdaeaHlj9IoZ-tjhmWKra1Bmu1wKSrwaYay8q8=.p12",
+          "storePassword": "0000001B1999B95340F4F3A102D768A7E7C718C55D0D10A62DD3A83701C9C0D74CAC264B24385D13FB3FE2"
+        }
+      }
+    ],
     "products": [
       {
         "name": "default",

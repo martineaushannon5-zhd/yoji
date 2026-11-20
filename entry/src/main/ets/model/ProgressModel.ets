@@ -23,6 +23,11 @@ export interface ProgressSnapshot {
   birthday?: string;
   favoriteVideos?: Record<string, string>;
   customWords?: Word[];
+  // v1.3.0 新增：错词本与间隔复习（旧版后端可能不返回）
+  wrongMap?: Record<string, string>;
+  wrongCount?: Record<string, number>;
+  reviewLevel?: Record<string, number>;
+  reviewDue?: Record<string, string>;
 }
 
 // 云端返回的进度包：version 用于写入时的乐观锁

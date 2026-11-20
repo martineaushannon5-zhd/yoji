@@ -82,6 +82,8 @@ export struct MineView {
   @State totalLearned: number = 0;
   @State learnedDays: number = 0;
   @State favCount: number = 0;
+  @State wrongCount: number = 0;
+  @State dueReviewCount: number = 0;
   @State videoFavCount: number = 0;
   onMutate: () => void = (): void => {};
   // 滚动位置回调：用于首页底部导航栏的收起/展开联动
@@ -120,6 +122,8 @@ export struct MineView {
     this.totalLearned = this.store.totalLearned;
     this.learnedDays = this.store.learnedDays;
     this.favCount = Object.keys(this.store.favorites).length;
+    this.wrongCount = this.store.wrongTotal();
+    this.dueReviewCount = this.store.dueCount();
     this.videoFavCount = Object.keys(this.store.favoriteVideos).length;
   }
 
@@ -396,6 +400,50 @@ export struct MineView {
           .animation({ duration: 480, curve: Curve.Friction, delay: 140 })
           .onClick(() => {
             router.pushUrl({ url: 'pages/FavoritePage' });
+          })
+
+          // 错词本入口：答错过的词 + 今日待复习数量
+          Row() {
+            SymbolGlyph($r('sys.symbol.checkmark_circle'))
+              .fontSize(20)
+              .fontColor([Theme.accent(this.isDark)])
+            Text('错词本')
+              .fontSize(15)
+              .fontColor(Theme.ink(this.isDark))
+              .layoutWeight(1)
+              .margin({ left: 12 })
+            Text(`${this.wrongCount} 个错词`)
+              .fontSize(15)
+              .fontColor(Theme.inkSecondary(this.isDark))
+            if (this.dueReviewCount > 0) {
+              Text(`${this.dueReviewCount} 个待复习`)
+                .fontSize(11)
+                .fontColor(Color.White)
+                .backgroundColor(Theme.accent(this.isDark))
+                .borderRadius(9)
+                .padding({ left: 7, right: 7, top: 2, bottom: 2 })
+                .margin({ left: 6 })
+            }
+            SymbolGlyph($r('sys.symbol.chevron_right'))
+              .fontSize(14)
+              .fontColor([Theme.inkTertiary(this.isDark)])
+              .margin({ left: 6 })
+          }
+          .width('100%')
+          // 玻璃质感：半透明底 + 背景模糊 + 高光描边 + 悬空阴影
+          .backgroundColor(Theme.glass(this.isDark))
+          .backgroundBlurStyle(BlurStyle.Thin)
+          .border({ width: 1, color: Theme.glassBorder(this.isDark) })
+          .borderRadius(18)
+          .shadow({ radius: 12, color: 'rgba(27,30,40,0.12)', offsetX: 0, offsetY: 6 })
+          .padding(20)
+          .margin({ top: 14 })
+          .clickEffect({ level: ClickEffectLevel.LIGHT })
+          .translate({ y: this.enter ? 0 : 28 })
+          .opacity(this.enter ? 1 : 0)
+          .animation({ duration: 480, curve: Curve.Friction, delay: 175 })
+          .onClick(() => {
+            router.pushUrl({ url: 'pages/WrongWordsPage' });
           })
 
           // 喜欢的视频入口：查看收藏的视频

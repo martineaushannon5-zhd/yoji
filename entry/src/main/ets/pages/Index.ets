@@ -6,6 +6,7 @@ import { MineView } from '../view/MineView';
 import { VideoListView } from '../view/VideoListView';
 import { STATUS_LEARNING, STATUS_MASTERED } from '../model/WordModel';
 import { getBook } from '../data/WordData';
+import { enterImmersive, exitImmersive, refreshBarStyle } from '../common/Immersive';
 
 interface TabItem {
   label: string;
@@ -32,7 +33,10 @@ const TABS: TabItem[] = [
 struct Index {
   @State activeTab: number = 0;
   // 深色模式开关：双向绑定 AppStorage，切换后页面配色同步刷新
-  @StorageLink('darkMode') isDark: boolean = false;
+  @StorageLink('darkMode') @Watch('onDarkModeChange') isDark: boolean = false;
+  // 沉浸式避让区（px）：由 Immersive.ets 写入，页面据此给状态栏/导航条留白
+  @StorageProp('insetStatusBarPx') insetStatusPx: number = 0;
+  @StorageProp('insetNavBarPx') insetNavPx: number = 0;
   // 云端同步完成标记：CloudSync 应用云端快照后自增，驱动首页重新读取 Store
   @StorageLink('syncTick') @Watch('onCloudSync') syncTick: number = 0;
   // 底部导航栏滚动联动：内容上滑时收起，下滑时恢复
@@ -69,6 +73,7 @@ struct Index {
   aboutToAppear(): void {
     this.syncFromStore();
     this.initStore();
+    this.applyImmersive();
     // 延迟一帧触发入场动画，保证首帧以隐藏态渲染后再过渡
     setTimeout(() => {
       this.homeEnter = true;
@@ -78,6 +83,21 @@ struct Index {
   // 从学习页返回时刷新今日进度与词库进度
   onPageShow(): void {
     this.tick += 1;
+    // 详情页为系统默认布局，回到首页时重新开启沉浸式
+    this.applyImmersive();
+  }
+
+  // 离开首页时恢复系统默认布局，避免其它页面内容压到状态栏下面
+  onPageHide(): void {
+    exitImmersive(getContext(this) as common.UIAbilityContext);
+  }
+
+  private applyImmersive(): void {
+    enterImmersive(getContext(this) as common.UIAbilityContext, this.isDark);
+  }
+
+  private onDarkModeChange(): void {
+    refreshBarStyle(getContext(this) as common.UIAbilityContext, this.isDark);
   }
 
   // 云端进度已应用：立即刷新首页统计
@@ -366,7 +386,8 @@ struct Index {
     .borderRadius(35)
     // 悬空阴影
     .shadow({ radius: 18, color: 'rgba(27,30,40,0.14)', offsetX: 0, offsetY: 8 })
-    .margin({ left: 32, right: 32, bottom: -10 })
+    // 沉浸式：抬到底部导航条（手势条）上方，并保留 6vp 间距
+    .margin({ left: 32, right: 32, bottom: px2vp(this.insetNavPx) + 6 })
     // 滚动联动：上滑收起（下滑移出 + 淡出），下滑恢复
     .translate({ x: 0, y: this.tabBarHidden ? 120 : 0 })
     .opacity(this.tabBarHidden ? 0 : 1)
@@ -825,6 +846,8 @@ struct Index {
       }
       .width('100%')
       .height('100%')
+      // 沉浸式：内容整体下移状态栏高度，背景仍铺满全屏
+      .padding({ top: px2vp(this.insetStatusPx) })
 
       // 底部导航栏悬浮于内容之上，随滚动联动收起/展开
       this.TabBar()
@@ -832,7 +855,6 @@ struct Index {
     .width('100%')
     .height('100%')
     .backgroundColor(Theme.bg(this.isDark))
-    // 背景延伸到系统底部导航条下方，避免底部出现割裂色带
-    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM])
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
   }
 }

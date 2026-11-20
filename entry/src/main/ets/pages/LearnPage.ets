@@ -506,8 +506,15 @@ struct LearnPage {
           .fontSize(15)
           .fontColor(Theme.inkSecondary(this.isDark))
           .margin({ top: 10 })
+        if (this.unknownCount > 0) {
+          Text('答错的词已加入错词本，可在「我的 → 错词本」按遗忘曲线复习')
+            .fontSize(13)
+            .fontColor(Theme.inkTertiary(this.isDark))
+            .margin({ top: 8 })
+            .textAlign(TextAlign.Center)
+        }
       } else {
-        Text('答错的单词已标记为「学习中」，下次复习会出现')
+        Text('答错的单词已加入错词本与复习队列')
           .fontSize(15)
           .fontColor(Theme.inkSecondary(this.isDark))
           .margin({ top: 10 })

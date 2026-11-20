@@ -5,6 +5,8 @@
     "pages/LearnPage",
     "pages/WordListPage",
     "pages/FavoritePage",
+    "pages/WrongWordsPage",
+    "pages/ReviewPage",
     "pages/LoginPage",
     "pages/CalendarPage",
     "pages/AboutPage",

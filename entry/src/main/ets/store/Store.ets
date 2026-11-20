@@ -11,6 +11,11 @@ interface PersistData {
   masteredAt: Record<string, string>;
   learnedLog: Record<string, string[]>;
   favorites: Record<string, string>;
+  // 错词本与间隔复习（v1.3.0）：wordId -> 日期/次数/等级
+  wrongMap: Record<string, string>;
+  wrongCount: Record<string, number>;
+  reviewLevel: Record<string, number>;
+  reviewDue: Record<string, string>;
   swipeGuideShown: boolean;
   todayLearned: number;
   todayDate: string;
@@ -32,6 +37,13 @@ interface PersistData {
   customWords: Word[];
 }
 
+// 一次复习的结果：是否走完整个间隔阶梯（视为掌握）、当前等级、下次复习日期
+export interface ReviewResult {
+  mastered: boolean;
+  level: number;
+  due: string;
+}
+
 // 全局学习进度存储，基于 Preferences 持久化
 export class Store {
   private static instance: Store | undefined = undefined;
@@ -43,6 +55,16 @@ export class Store {
   learnedLog: Record<string, string[]> = {};
   // 收藏（单词本）：wordId -> 收藏日期，用于按收藏时间排序
   favorites: Record<string, string> = {};
+  // 错词本：wordId -> 最近一次答错的日期
+  wrongMap: Record<string, string> = {};
+  // 累计答错次数（只增不减，用于展示“错了 N 次”）
+  wrongCount: Record<string, number> = {};
+  // 间隔复习：连续答对的等级，0 表示刚答错、需要重新开始
+  reviewLevel: Record<string, number> = {};
+  // 间隔复习：wordId -> 下次应复习的日期（YYYY-MM-DD）
+  reviewDue: Record<string, string> = {};
+  // 间隔复习的间隔天数：每答对一次升一级，走完即视为真正掌握
+  private static readonly REVIEW_INTERVALS: number[] = [1, 2, 4, 7, 15, 30];
   // 学词页滑动引导是否已展示过（仅首次进入学词时显示一次）
   swipeGuideShown: boolean = false;
   todayLearned: number = 0;
@@ -107,6 +129,10 @@ export class Store {
     this.masteredAt = data.masteredAt ?? {};
     this.learnedLog = data.learnedLog ?? {};
     this.favorites = data.favorites ?? {};
+    this.wrongMap = data.wrongMap ?? {};
+    this.wrongCount = data.wrongCount ?? {};
+    this.reviewLevel = data.reviewLevel ?? {};
+    this.reviewDue = data.reviewDue ?? {};
     this.swipeGuideShown = data.swipeGuideShown ?? false;
     // 兼容旧数据：无学习日志时，由掌握日期回填，保证日历可展示历史掌握记录
     if (Object.keys(this.learnedLog).length === 0 && Object.keys(this.masteredAt).length > 0) {
@@ -156,6 +182,7 @@ export class Store {
     return Object.keys(this.statusMap).length > 0 ||
       Object.keys(this.learnedLog).length > 0 ||
       Object.keys(this.favorites).length > 0 ||
+      Object.keys(this.wrongMap).length > 0 ||
       Object.keys(this.favoriteVideos).length > 0 ||
       Object.keys(this.masteredAt).length > 0 ||
       this.customWords.length > 0 ||
@@ -171,6 +198,10 @@ export class Store {
       masteredAt: this.masteredAt,
       learnedLog: this.learnedLog,
       favorites: this.favorites,
+      wrongMap: this.wrongMap,
+      wrongCount: this.wrongCount,
+      reviewLevel: this.reviewLevel,
+      reviewDue: this.reviewDue,
       swipeGuideShown: this.swipeGuideShown,
       todayLearned: this.todayLearned,
       todayDate: this.todayDate,
@@ -197,6 +228,10 @@ export class Store {
     this.masteredAt = snapshot.masteredAt;
     this.learnedLog = snapshot.learnedLog;
     this.favorites = snapshot.favorites;
+    this.wrongMap = snapshot.wrongMap ?? {};
+    this.wrongCount = snapshot.wrongCount ?? {};
+    this.reviewLevel = snapshot.reviewLevel ?? {};
+    this.reviewDue = snapshot.reviewDue ?? {};
     this.swipeGuideShown = snapshot.swipeGuideShown;
     this.todayLearned = snapshot.todayLearned;
     this.todayDate = snapshot.todayDate;
@@ -317,6 +352,8 @@ export class Store {
     this.logToday(wordId);
     const old = this.statusOf(wordId);
     if (!known) {
+      // 答错的词进入错词本，并重置间隔复习进度
+      this.markWrong(wordId);
       if (old !== STATUS_LEARNING) {
         this.statusMap[wordId] = STATUS_LEARNING;
         if (old === STATUS_MASTERED) {
@@ -342,6 +379,168 @@ export class Store {
     }
     await this.save();
     return true;
+  }
+
+  // ---- 错词本与间隔复习 ----
+
+  // 答错：记入错词本，重置复习等级，并安排当天复习一次
+  private markWrong(wordId: string): void {
+    this.wrongMap[wordId] = Store.today();
+    this.wrongCount[wordId] = (this.wrongCount[wordId] ?? 0) + 1;
+    this.reviewLevel[wordId] = 0;
+    this.reviewDue[wordId] = Store.today();
+  }
+
+  // 错词本中的单词 id（已掌握的自动排除），按最近答错时间倒序
+  wrongWordIds(): string[] {
+    const ids: string[] = [];
+    const keys = Object.keys(this.wrongMap);
+    for (let i = 0; i < keys.length; i++) {
+      const id = keys[i];
+      if (this.wrongMap[id] !== '' && this.statusOf(id) !== STATUS_MASTERED) {
+        ids.push(id);
+      }
+    }
+    ids.sort((a: string, b: string): number => {
+      const da = Store.dateRank(this.wrongMap[a] ?? '');
+      const db = Store.dateRank(this.wrongMap[b] ?? '');
+      if (da === db) {
+        return (this.wrongCount[b] ?? 0) - (this.wrongCount[a] ?? 0);
+      }
+      return db - da;
+    });
+    return ids;
+  }
+
+  // 今天到期需要复习的单词 id，按到期日期升序（错词优先）
+  dueWordIds(): string[] {
+    const todayRank = Store.dateRank(Store.today());
+    const ids: string[] = [];
+    const keys = Object.keys(this.reviewDue);
+    for (let i = 0; i < keys.length; i++) {
+      const id = keys[i];
+      const due = this.reviewDue[id];
+      if (due !== '' && Store.dateRank(due) <= todayRank && this.statusOf(id) !== STATUS_MASTERED) {
+        ids.push(id);
+      }
+    }
+    // 兼容历史数据：在错词本里但没有复习计划的词也纳入今日复习
+    const wrongKeys = Object.keys(this.wrongMap);
+    for (let i = 0; i < wrongKeys.length; i++) {
+      const id = wrongKeys[i];
+      if (ids.indexOf(id) < 0 && this.reviewDue[id] === undefined &&
+        this.wrongMap[id] !== '' && this.statusOf(id) !== STATUS_MASTERED) {
+        ids.push(id);
+      }
+    }
+    ids.sort((a: string, b: string): number => {
+      return Store.dateRank(this.reviewDue[a] ?? '') - Store.dateRank(this.reviewDue[b] ?? '');
+    });
+    return ids;
+  }
+
+  // 今日待复习数量（错词本入口展示）
+  dueCount(): number {
+    return this.dueWordIds().length;
+  }
+
+  // 错词总数（已掌握的不算）
+  wrongTotal(): number {
+    return this.wrongWordIds().length;
+  }
+
+  // 复习一个单词：认识则升级并顺延下次复习日期，不认识则重置等级
+  async reviewWord(wordId: string, known: boolean): Promise<ReviewResult> {
+    this.markTodayActive();
+    this.logToday(wordId);
+    if (!known) {
+      this.wrongMap[wordId] = Store.today();
+      this.wrongCount[wordId] = (this.wrongCount[wordId] ?? 0) + 1;
+      this.reviewLevel[wordId] = 0;
+      this.reviewDue[wordId] = Store.addDays(1);
+      await this.save();
+      const r: ReviewResult = { mastered: false, level: 0, due: this.reviewDue[wordId] };
+      return r;
+    }
+    const level = (this.reviewLevel[wordId] ?? 0) + 1;
+    if (level >= Store.REVIEW_INTERVALS.length) {
+      // 走完全部间隔阶梯：视为真正掌握，移出错词本与复习队列
+      this.statusMap[wordId] = STATUS_MASTERED;
+      this.masteredAt[wordId] = Store.today();
+      this.removeWrong(wordId);
+      await this.save();
+      const done: ReviewResult = { mastered: true, level: level, due: '' };
+      return done;
+    }
+    this.reviewLevel[wordId] = level;
+    this.reviewDue[wordId] = Store.addDays(Store.REVIEW_INTERVALS[level - 1]);
+    await this.save();
+    const result: ReviewResult = { mastered: false, level: level, due: this.reviewDue[wordId] };
+    return result;
+  }
+
+  // 手动把单词标为已掌握，并移出错词本
+  async masterWord(wordId: string): Promise<void> {
+    this.statusMap[wordId] = STATUS_MASTERED;
+    this.masteredAt[wordId] = Store.today();
+    this.removeWrong(wordId);
+    await this.save();
+  }
+
+  // 从错词本 / 复习队列中彻底移除（ArkTS 不支持 delete，重建 Record）
+  private removeWrong(wordId: string): void {
+    const wrongNext: Record<string, string> = {};
+    const wrongKeys = Object.keys(this.wrongMap);
+    for (let i = 0; i < wrongKeys.length; i++) {
+      if (wrongKeys[i] !== wordId) {
+        wrongNext[wrongKeys[i]] = this.wrongMap[wrongKeys[i]];
+      }
+    }
+    this.wrongMap = wrongNext;
+    const countNext: Record<string, number> = {};
+    const countKeys = Object.keys(this.wrongCount);
+    for (let i = 0; i < countKeys.length; i++) {
+      if (countKeys[i] !== wordId) {
+        countNext[countKeys[i]] = this.wrongCount[countKeys[i]];
+      }
+    }
+    this.wrongCount = countNext;
+    const levelNext: Record<string, number> = {};
+    const levelKeys = Object.keys(this.reviewLevel);
+    for (let i = 0; i < levelKeys.length; i++) {
+      if (levelKeys[i] !== wordId) {
+        levelNext[levelKeys[i]] = this.reviewLevel[levelKeys[i]];
+      }
+    }
+    this.reviewLevel = levelNext;
+    const dueNext: Record<string, string> = {};
+    const dueKeys = Object.keys(this.reviewDue);
+    for (let i = 0; i < dueKeys.length; i++) {
+      if (dueKeys[i] !== wordId) {
+        dueNext[dueKeys[i]] = this.reviewDue[dueKeys[i]];
+      }
+    }
+    this.reviewDue = dueNext;
+  }
+
+  // 日期转可比较的数字（YYYY-M-D 未补零，不能直接按字符串比较）
+  private static dateRank(key: string): number {
+    if (key === '') {
+      return 0;
+    }
+    const parts = key.split('-');
+    if (parts.length < 3) {
+      return 0;
+    }
+    return Number(parts[0]) * 10000 + Number(parts[1]) * 100 + Number(parts[2]);
+  }
+
+  private static addDays(days: number): string {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    const month = (d.getMonth() + 1).toString();
+    const day = d.getDate().toString();
+    return `${d.getFullYear()}-${month}-${day}`;
   }
 
   // 是否已看过学词页的滑动引导
@@ -398,6 +597,10 @@ export class Store {
     this.masteredAt = {};
     this.learnedLog = {};
     this.favorites = {};
+    this.wrongMap = {};
+    this.wrongCount = {};
+    this.reviewLevel = {};
+    this.reviewDue = {};
     this.favoriteVideos = {};
     this.videoProgress = {};
     this.customWords = [];
@@ -523,6 +726,11 @@ export class Store {
     this.statusMap = {};
     this.masteredAt = {};
     this.learnedLog = {};
+    this.favorites = {};
+    this.wrongMap = {};
+    this.wrongCount = {};
+    this.reviewLevel = {};
+    this.reviewDue = {};
     this.todayLearned = 0;
     this.streak = 0;
     this.totalLearned = 0;
@@ -543,6 +751,10 @@ export class Store {
       masteredAt: this.masteredAt,
       learnedLog: this.learnedLog,
       favorites: this.favorites,
+      wrongMap: this.wrongMap,
+      wrongCount: this.wrongCount,
+      reviewLevel: this.reviewLevel,
+      reviewDue: this.reviewDue,
       swipeGuideShown: this.swipeGuideShown,
       todayLearned: this.todayLearned,
       todayDate: this.todayDate,
